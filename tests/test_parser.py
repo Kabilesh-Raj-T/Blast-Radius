@@ -131,3 +131,52 @@ def test_parse_file_syntax_error(tmp_path):
     code = "def invalid_syntax("
     result = _write_and_parse(tmp_path, code)
     assert result == {}
+
+
+def test_non_utf8_bytes(tmp_path):
+    file_path = tmp_path / "binary.py"
+    file_path.write_bytes(b"\xff\xfe")
+    result = parse_file(str(file_path))
+    assert result == {}
+
+
+def test_empty_file(tmp_path):
+    result = _write_and_parse(tmp_path, "")
+    assert result == {}
+
+
+def test_only_imports_no_functions(tmp_path):
+    code = """
+import os
+import sys
+from pathlib import Path
+"""
+    result = _write_and_parse(tmp_path, code)
+    assert result == {}
+
+
+def test_lambda_assignment_not_tracked(tmp_path):
+    code = """
+fn = lambda x: print(x)
+def test_func():
+    fn(1)
+"""
+    result = _write_and_parse(tmp_path, code)
+    # The lambda function assignment (fn = lambda x: print(x)) is not a FunctionDef,
+    # so we shouldn't have a key for "fn" (or if it exists, it shouldn't be captured as a function).
+    # But "test_func" is a FunctionDef calling "fn", which should be captured.
+    assert "fn" not in result
+    assert result.get("test_func") == ["fn"]
+
+
+def test_decorator_calls_not_tracked(tmp_path):
+    code = """
+@my_decorator(arg_call())
+def test_func():
+    actual_call()
+"""
+    result = _write_and_parse(tmp_path, code)
+    # decorator calls (like arg_call) are outside the function body,
+    # so they must not be tracked under test_func.
+    # Only calls inside the body (like actual_call) should be tracked.
+    assert result == {"test_func": ["actual_call"]}
