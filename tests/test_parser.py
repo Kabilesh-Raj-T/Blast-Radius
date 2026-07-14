@@ -6,7 +6,8 @@ def _write_and_parse(tmp_path, code: str) -> list[Symbol]:
     """Helper to write code to a temp file and parse it."""
     file_path = tmp_path / "temp_source.py"
     file_path.write_text(code, encoding="utf-8")
-    return parse_file(str(file_path), str(tmp_path))
+    symbols, _ = parse_file(str(file_path), str(tmp_path))
+    return symbols
 
 
 def test_single_function_attributes(tmp_path):
@@ -130,8 +131,9 @@ def test_parse_file_syntax_error(tmp_path):
 def test_non_utf8_bytes(tmp_path):
     file_path = tmp_path / "binary.py"
     file_path.write_bytes(b"\xff\xfe")
-    result = parse_file(str(file_path))
-    assert result == []
+    symbols, imports = parse_file(str(file_path))
+    assert symbols == []
+    assert imports == {}
 
 
 def test_empty_file(tmp_path):
@@ -154,3 +156,33 @@ fn = lambda x: print(x)
 """
     result = _write_and_parse(tmp_path, code)
     assert result == []
+
+
+def test_imports_map_extraction(tmp_path):
+    code = """
+import os.path as osp
+import sys
+from utils.parser import parse_date as pd
+from utils.parser import parse_datetime
+from .sibling import local_helper
+from ..parent import parent_helper
+"""
+    # Write this code to billing/invoice.py relative to tmp_path
+    # package billing
+    billing_dir = tmp_path / "billing"
+    billing_dir.mkdir()
+    file_path = billing_dir / "invoice.py"
+    file_path.write_text(code, encoding="utf-8")
+
+    # Module name should be billing.invoice
+    _, imports = parse_file(str(file_path), str(tmp_path))
+
+    # Assertions
+    assert imports["osp"] == "os.path"
+    assert imports["sys"] == "sys"
+    assert imports["pd"] == "utils.parser.parse_date"
+    assert imports["parse_datetime"] == "utils.parser.parse_datetime"
+    # Sibling relative import
+    assert imports["local_helper"] == "billing.sibling.local_helper"
+    # Parent relative import
+    assert imports["parent_helper"] == "parent.parent_helper"

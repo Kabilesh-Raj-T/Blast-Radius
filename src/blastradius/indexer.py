@@ -53,7 +53,7 @@ def index_repo(
     exclude: list[str] | None = None,
     index_dir: str | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Walk the repository and build a master symbol table.
+    """Walk the repository and build a master symbol table and import mapping.
 
     Uses mtime-based incremental caching to skip unchanged files.
     """
@@ -74,10 +74,13 @@ def index_repo(
     prev_index = load_index(str(index_path))
     prev_cache = {}
 
-    # If the loaded index contains old format data (lists instead of dicts), discard it
-    if prev_index and not all(isinstance(v, dict) for v in prev_index.values()):
-        prev_index = {}
+    # Check if loaded index is in the structured format, if not, discard it
+    if prev_index and ("symbols" not in prev_index or "imports" not in prev_index):
+        prev_symbols = {}
+        prev_imports = {}
     else:
+        prev_symbols = prev_index.get("symbols", {})
+        prev_imports = prev_index.get("imports", {})
         if cache_path.exists():
             try:
                 with open(cache_path, "r", encoding="utf-8") as f:
@@ -85,7 +88,8 @@ def index_repo(
             except Exception:
                 prev_cache = {}
 
-    new_index = {}
+    new_symbols = {}
+    new_imports = {}
     current_cache = {}
 
     # Walk files
@@ -108,17 +112,25 @@ def index_repo(
         # Check cache hit
         reused = False
         if rel_path_str in prev_cache and prev_cache[rel_path_str] == current_mtime:
-            # Find and reuse previous index entries for this file
-            # A symbol belongs to this file if its filepath field matches
-            for symbol_id, symbol_dict in prev_index.items():
+            # Find and reuse previous symbols for this file
+            for symbol_id, symbol_dict in prev_symbols.items():
                 if isinstance(symbol_dict, dict) and symbol_dict.get("filepath") == rel_path_str:
-                    new_index[symbol_id] = symbol_dict
+                    new_symbols[symbol_id] = symbol_dict
+            # Reuse imports
+            if rel_path_str in prev_imports:
+                new_imports[rel_path_str] = prev_imports[rel_path_str]
             reused = True
 
         if not reused:
-            symbols = parse_file(str(filepath), str(repo_dir))
+            symbols, import_map = parse_file(str(filepath), str(repo_dir))
             for symbol in symbols:
-                new_index[symbol.unique_id] = symbol.to_dict()
+                new_symbols[symbol.unique_id] = symbol.to_dict()
+            new_imports[rel_path_str] = import_map
+
+    new_index = {
+        "symbols": new_symbols,
+        "imports": new_imports,
+    }
 
     # Save outputs
     save_index(new_index, str(index_path))

@@ -44,6 +44,76 @@ def get_decorator_name(decorator_node: ast.AST) -> str:
     return ""
 
 
+def get_relative_base(module_name: str, filepath: str, level: int) -> str:
+    """Resolve the package base for a relative import level."""
+    parts = module_name.split(".") if module_name else []
+    is_init = Path(filepath).name == "__init__.py"
+
+    if is_init:
+        drop = level - 1
+    else:
+        drop = level
+
+    if drop < 0:
+        drop = 0
+
+    if drop >= len(parts):
+        base_parts: list[str] = []
+    else:
+        base_parts = list(parts[: len(parts) - drop])
+
+    return ".".join(base_parts)
+
+
+class ImportCollector(ast.NodeVisitor):
+    """AST visitor to collect imported names and map them to fully qualified paths."""
+
+    def __init__(self, current_module: str, filepath: str, repo_path: str) -> None:
+        self.current_module = current_module
+        self.filepath = filepath
+        self.repo_path = repo_path
+        self.import_map: dict[str, str] = {}
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            name = alias.name
+            asname = alias.asname
+            if asname:
+                self.import_map[asname] = name
+            else:
+                prefix = name.split(".")[0]
+                self.import_map[prefix] = prefix
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        module_name = node.module
+        level = node.level or 0
+
+        # Resolve relative base package if level >= 1
+        if level > 0:
+            rel_base = get_relative_base(self.current_module, self.filepath, level)
+            if module_name:
+                base_package = f"{rel_base}.{module_name}" if rel_base else module_name
+            else:
+                base_package = rel_base
+        else:
+            base_package = module_name or ""
+
+        for alias in node.names:
+            name = alias.name
+            asname = alias.asname
+            local_name = asname if asname else name
+
+            if name == "*":
+                # Wildcard imports cannot be fully resolved statically
+                continue
+
+            fqn = f"{base_package}.{name}" if base_package else name
+            self.import_map[local_name] = fqn
+
+        self.generic_visit(node)
+
+
 class FileParser(ast.NodeVisitor):
     """AST visitor to walk the file and extract detailed symbols."""
 
@@ -146,19 +216,24 @@ class FileParser(ast.NodeVisitor):
         self._process_function(node, is_async=True)
 
 
-def parse_file(filepath: str, repo_path: str = ".") -> list[Symbol]:
-    """Parse a Python file and extract all defined symbols.
+def parse_file(filepath: str, repo_path: str = ".") -> tuple[list[Symbol], dict[str, str]]:
+    """Parse a Python file and extract all defined symbols and import maps.
 
     If the file cannot be parsed due to SyntaxError or UnicodeDecodeError,
-    logs a skip warning using rich and returns an empty list.
+    logs a skip warning using rich and returns an empty tuple.
     """
     try:
         source = Path(filepath).read_text(encoding="utf-8")
         tree = ast.parse(source, filename=filepath)
     except (SyntaxError, UnicodeDecodeError) as e:
         rich.print(f"[yellow]SKIP[/] {filepath}: {e}")
-        return []
+        return [], {}
 
     parser = FileParser(filepath, repo_path)
     parser.visit(tree)
-    return parser.symbols
+
+    module_name = filepath_to_module(filepath, repo_path)
+    collector = ImportCollector(module_name, filepath, repo_path)
+    collector.visit(tree)
+
+    return parser.symbols, collector.import_map

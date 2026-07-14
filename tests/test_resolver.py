@@ -1,4 +1,4 @@
-from blastradius.resolver import resolve
+from blastradius.resolver import resolve, resolve_call
 
 
 def test_resolve_single_match():
@@ -28,3 +28,62 @@ def test_resolve_no_matches():
     # Resolve no matches (e.g. built-in/external)
     res = resolve("strptime", index)
     assert res == []
+
+
+def test_resolve_call_absolute_import():
+    imports = {"file.py": {"parse_date": "utils.parser.parse_date"}}
+    symbols = {"utils.parser.parse_date": {"function_name": "parse_date"}}
+    res = resolve_call("parse_date", "caller", None, "file.py", imports, symbols)
+    assert res == ["utils.parser.parse_date"]
+
+
+def test_resolve_call_absolute_import_alias():
+    imports = {"file.py": {"pd": "utils.parser.parse_date"}}
+    symbols = {"utils.parser.parse_date": {"function_name": "parse_date"}}
+    res = resolve_call("pd", "caller", None, "file.py", imports, symbols)
+    assert res == ["utils.parser.parse_date"]
+
+
+def test_resolve_call_module_alias():
+    imports = {"file.py": {"up": "utils.parser"}}
+    symbols = {"utils.parser.parse_date": {"function_name": "parse_date"}}
+    res = resolve_call("up.parse_date", "caller", None, "file.py", imports, symbols)
+    assert res == ["utils.parser.parse_date"]
+
+
+def test_resolve_call_module_no_alias():
+    imports = {"file.py": {"utils": "utils"}}
+    symbols = {"utils.parser.parse_date": {"function_name": "parse_date"}}
+    res = resolve_call("utils.parser.parse_date", "caller", None, "file.py", imports, symbols)
+    assert res == ["utils.parser.parse_date"]
+
+
+def test_resolve_call_local_class_method():
+    imports = {"file.py": {}}
+    symbols = {"module.MyClass.validate": {"function_name": "validate"}}
+    res = resolve_call("self.validate", "module", "MyClass", "file.py", imports, symbols)
+    assert res == ["module.MyClass.validate"]
+
+
+def test_resolve_call_local_module_function():
+    imports = {"file.py": {}}
+    symbols = {"module.local_helper": {"function_name": "local_helper"}}
+    res = resolve_call("local_helper", "module", None, "file.py", imports, symbols)
+    assert res == ["module.local_helper"]
+
+
+def test_resolve_call_fallback_name_matching():
+    imports = {"file.py": {}}
+    symbols = {
+        "other.validate": {"function_name": "validate"},
+        "another.validate": {"function_name": "validate"},
+    }
+    res = resolve_call("obj.validate", "module", None, "file.py", imports, symbols)
+    assert set(res) == {"other.validate", "another.validate"}
+
+
+def test_resolve_call_external_unregistered():
+    imports = {"file.py": {"json": "json"}}
+    symbols = {}
+    res = resolve_call("json.loads", "module", None, "file.py", imports, symbols)
+    assert res == ["json.loads"]
