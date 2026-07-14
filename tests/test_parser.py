@@ -231,3 +231,29 @@ def main():
     result = _write_and_parse(tmp_path, code)
     assert len(result) == 1
     assert set(result[0].calls or []) == {"parse_date", "self.validate", "obj.method"}
+
+
+def test_extract_local_types_and_decorator_calls(tmp_path):
+    code = """
+class Worker:
+    @decorator(arg)
+    def do_work(self, item: Item):
+        invoice: Invoice = get_invoice()
+        client = Client()
+        client.notify()
+"""
+    result = _write_and_parse(tmp_path, code)
+    # Class + method = 2 symbols
+    assert len(result) == 2
+
+    method = next(s for s in result if s.kind == "method")
+    assert method.local_types == {
+        "self": "Worker",
+        "cls": "Worker",
+        "item": "Item",
+        "invoice": "Invoice",
+        "client": "Client",
+    }
+
+    # Decorator call `@decorator(arg)` should be captured in calls
+    assert "decorator" in (method.calls or [])

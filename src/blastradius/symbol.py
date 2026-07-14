@@ -23,6 +23,7 @@ class Symbol:
     method_kind: str | None  # "static", "class", "instance", "property", "abstract"
     bases: list[str] | None
     calls: list[str] | None
+    local_types: dict[str, str] | None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the symbol to a dictionary."""
@@ -47,4 +48,5 @@ class Symbol:
             method_kind=data["method_kind"],
             bases=data["bases"],
             calls=data.get("calls"),
+            local_types=data.get("local_types"),
         )

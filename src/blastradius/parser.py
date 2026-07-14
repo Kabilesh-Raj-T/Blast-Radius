@@ -149,6 +149,60 @@ class CallExtractor(ast.NodeVisitor):
         pass
 
 
+def extract_local_types(
+    node: ast.FunctionDef | ast.AsyncFunctionDef, class_name: str | None
+) -> dict[str, str]:
+    """Build a local type map from function parameters, AnnAssign, and instantiations."""
+    local_types: dict[str, str] = {}
+
+    # 1. Class instance variables self/cls
+    if class_name:
+        innermost = class_name.split(".")[-1]
+        local_types["self"] = innermost
+        local_types["cls"] = innermost
+
+    # 2. Parameters with annotations
+    for arg in node.args.args:
+        if arg.annotation:
+            anno_name = get_call_name(arg.annotation)
+            if anno_name:
+                local_types[arg.arg] = anno_name
+
+    # 3. Walk function body to find assignments
+    class AssignmentVisitor(ast.NodeVisitor):
+        def visit_AnnAssign(self, assign_node: ast.AnnAssign) -> None:
+            if isinstance(assign_node.target, ast.Name) and assign_node.annotation:
+                anno_name = get_call_name(assign_node.annotation)
+                if anno_name:
+                    local_types[assign_node.target.id] = anno_name
+            self.generic_visit(assign_node)
+
+        def visit_Assign(self, assign_node: ast.Assign) -> None:
+            # x = Invoice()
+            if isinstance(assign_node.value, ast.Call) and isinstance(
+                assign_node.value.func, ast.Name
+            ):
+                class_type = assign_node.value.func.id
+                for target in assign_node.targets:
+                    if isinstance(target, ast.Name):
+                        local_types[target.id] = class_type
+            self.generic_visit(assign_node)
+
+        def visit_FunctionDef(self, nested_node: ast.FunctionDef) -> None:
+            pass
+
+        def visit_AsyncFunctionDef(self, nested_node: ast.AsyncFunctionDef) -> None:
+            pass
+
+        def visit_ClassDef(self, nested_node: ast.ClassDef) -> None:
+            pass
+
+    visitor = AssignmentVisitor()
+    for child in node.body:
+        visitor.visit(child)
+    return local_types
+
+
 class FileParser(ast.NodeVisitor):
     """AST visitor to walk the file and extract detailed symbols."""
 
@@ -213,6 +267,7 @@ class FileParser(ast.NodeVisitor):
             method_kind=None,
             bases=bases,
             calls=None,
+            local_types=None,
         )
         self.symbols.append(symbol)
 
@@ -286,11 +341,16 @@ class FileParser(ast.NodeVisitor):
             kind = "function"
             method_kind = None
 
-        # Extract calls
+        # Extract calls (from body and decorator list)
         extractor = CallExtractor()
         for child in node.body:
             extractor.visit(child)
+        for dec in node.decorator_list:
+            extractor.visit(dec)
         calls = extractor.calls
+
+        # Extract local types
+        local_types = extract_local_types(node, class_name)
 
         # Create symbol
         symbol = Symbol(
@@ -309,6 +369,7 @@ class FileParser(ast.NodeVisitor):
             method_kind=method_kind,
             bases=None,
             calls=calls,
+            local_types=local_types,
         )
         self.symbols.append(symbol)
 

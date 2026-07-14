@@ -35,6 +35,7 @@ def make_symbol(
         method_kind=None,
         bases=None,
         calls=None,
+        local_types=None,
     )
 
 

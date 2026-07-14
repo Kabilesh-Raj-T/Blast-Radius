@@ -107,8 +107,11 @@ def build_graph(index: dict[str, Any]) -> nx.MultiDiGraph:
         # B. CALLS (for Functions & Methods)
         if kind in ("function", "method") and sym_dict.get("calls"):
             added_callees = set()
+            local_types = sym_dict.get("local_types")
             for call_target in sym_dict.get("calls", []):
-                resolved = resolve_call(call_target, module, class_name, filepath, imports, symbols)
+                resolved = resolve_call(
+                    call_target, module, class_name, filepath, imports, symbols, local_types
+                )
                 for callee_id in resolved:
                     if callee_id in symbols and callee_id not in added_callees:
                         G.add_edge(sym_id, callee_id, relation="CALLS")

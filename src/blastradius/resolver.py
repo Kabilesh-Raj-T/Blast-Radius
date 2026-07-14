@@ -34,6 +34,7 @@ def resolve_call(
     filepath: str,
     imports: dict[str, dict[str, str]],
     symbols: dict[str, dict[str, Any]],
+    local_types: dict[str, str] | None = None,
 ) -> list[str]:
     """Map a function call to the correct symbol in the symbol table.
 
@@ -44,6 +45,19 @@ def resolve_call(
 
     parts = call_name.split(".")
     prefix = parts[0]
+
+    # 0. Resolve using local variable types (AST context)
+    if local_types and prefix in local_types and len(parts) > 1:
+        class_type = local_types[prefix]
+        method_name = ".".join(parts[1:])
+        resolved_classes = resolve_call(
+            class_type, caller_module, caller_class, filepath, imports, symbols, local_types
+        )
+        for class_fqn in resolved_classes:
+            fqn = f"{class_fqn}.{method_name}"
+            if fqn in symbols:
+                return [fqn]
+            return [fqn]
 
     # 1. Resolve using Import Map
     if prefix in import_map:

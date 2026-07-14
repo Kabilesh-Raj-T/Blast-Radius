@@ -104,3 +104,14 @@ def test_resolve_call_class_method_prefix():
     }
     res = resolve_call("MyClass.save", "module", None, "file.py", imports, symbols)
     assert res == ["module.MyClass.save"]
+
+
+def test_resolve_call_local_types():
+    imports = {"file.py": {"Invoice": "billing.invoice.Invoice"}}
+    symbols = {
+        "billing.invoice.Invoice": {"kind": "class"},
+        "billing.invoice.Invoice.save": {"function_name": "save"},
+    }
+    local_types = {"inv": "Invoice"}
+    res = resolve_call("inv.save", "module", None, "file.py", imports, symbols, local_types)
+    assert res == ["billing.invoice.Invoice.save"]
