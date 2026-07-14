@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "blastradius"
+version = "0.1.0"
+description = "A tool to analyze dependency blast radius"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Kabilesh", email = "rktk.047@gmail.com"}
+]
+dependencies = [
+    "networkx>=3.0",
+    "typer>=0.12",
+    "rich>=13.0",
+]
+
+[project.scripts]
+blastradius = "blastradius.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.9",
+]
