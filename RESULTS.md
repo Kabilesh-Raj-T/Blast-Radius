@@ -65,6 +65,28 @@ Out-degree represents the number of unique internal functions called by the targ
 | 4 | `src/flask/config.py:__init__` | 15 | Configuration setup constructor |
 | 5 | `src/flask/debughelpers.py:__init__` | 15 | Debug helper initialization |
 
+
+## Django library
+
+The `django` library (cloned from `https://github.com/django/django`) was indexed and analyzed for the blast radius of `django/utils/dateparse.py:parse_date`.
+
+- **Total Nodes (Function/Method definitions)**: 32,009
+- **Blast radius target**: `django/utils/dateparse.py:parse_date`
+- **Total tests at risk**: 8,692
+- **Confidence Distribution**:
+  * **HIGH**: 1
+  * **MEDIUM**: 15
+  * **LOW**: 8,676
+
+### Analysis of Blast Radius Findings
+
+1. **HIGH Confidence**: Only `tests/utils_tests/test_dateparse.py:DateParseTests.test_parse_date` calls `parse_date` directly.
+2. **MEDIUM Confidence**: Calls made 2 hops away (e.g. through model/form fields). Examples:
+   - `tests/gis_tests/test_geoforms.py:GeometryFieldTest.test_geom_type` via `GeometryField.to_python`.
+   - `tests/auth_tests/test_forms.py:BaseUserCreationFormTest.test_invalid_username_no_normalize`.
+3. **LOW Confidence**: There is a high concentration of LOW confidence nodes (8,676). This occurs because `parse_date` is called by `DateField.to_python`. Since `to_python` is a generic method name defined in dozens of forms and model classes, static resolution of `.to_python()` calls resolves to all implementations across the codebase. Consequently, the call graph transitively links almost every model/form test in Django to the modified function. This is a classic case of name-resolution ambiguity described in the limitations section.
+
 ---
-*Generated dynamically using `scripts/analyze_requests.py` and `scripts/analyze_flask.py`.*
+*Generated dynamically using `scripts/analyze_requests.py`, `scripts/analyze_flask.py`, and `scripts/analyze_django.py`.*
+
 

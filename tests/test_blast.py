@@ -135,3 +135,93 @@ def test_blast_radius_cycle_repo_integration():
     # Assertions
     assert duration < 1.0
     assert isinstance(results, list)
+
+
+def test_confidence_high():
+    # Direct caller: target -> test_func (depth 1)
+    rev = nx.DiGraph()
+    rev.add_edge("target", "test_func")
+    results = compute_blast_radius(rev, "target")
+    assert len(results) == 1
+    assert results[0].confidence == "HIGH"
+    assert results[0].depth == 1
+    assert len(results[0].chain) == 2
+
+
+def test_confidence_medium():
+    # 2-hop: target -> a -> test_func (depth 2)
+    rev = nx.DiGraph()
+    rev.add_edge("target", "a")
+    rev.add_edge("a", "test_func")
+    results = compute_blast_radius(rev, "target")
+    assert len(results) == 1
+    assert results[0].confidence == "MEDIUM"
+    assert results[0].depth == 2
+    assert len(results[0].chain) == 3
+
+
+def test_confidence_low():
+    # 3-hop: target -> a -> b -> test_func (depth 3)
+    rev = nx.DiGraph()
+    rev.add_edge("target", "a")
+    rev.add_edge("a", "b")
+    rev.add_edge("b", "test_func")
+    results = compute_blast_radius(rev, "target")
+    assert len(results) == 1
+    assert results[0].confidence == "LOW"
+    assert results[0].depth == 3
+    assert len(results[0].chain) == 4
+
+
+def test_no_tests_in_graph():
+    # target -> a -> b (no test functions)
+    rev = nx.DiGraph()
+    rev.add_edge("target", "a")
+    rev.add_edge("a", "b")
+    results = compute_blast_radius(rev, "target")
+    assert results == []
+
+
+def test_max_depth_strict():
+    # Chain: target -> a -> b -> test_func (depth 3)
+    # With max_depth=2, test_func (depth 3) should NOT be returned
+    rev = nx.DiGraph()
+    rev.add_edge("target", "a")
+    rev.add_edge("a", "b")
+    rev.add_edge("b", "test_func")
+    results = compute_blast_radius(rev, "target", max_depth=2)
+    assert len(results) == 0
+
+
+def test_multiple_tests_returned():
+    # target calls test_a and test_b
+    rev = nx.DiGraph()
+    rev.add_edge("target", "test_a")
+    rev.add_edge("target", "test_b")
+    results = compute_blast_radius(rev, "target")
+    assert len(results) == 2
+    funcs = {r.test_function for r in results}
+    assert funcs == {"test_a", "test_b"}
+
+
+def test_deduplicate_test_paths():
+    # test_func is reachable via two paths:
+    # 1. target -> a -> test_func
+    # 2. target -> b -> test_func
+    # Visited set should ensure test_func is only returned once
+    rev = nx.DiGraph()
+    rev.add_edge("target", "a")
+    rev.add_edge("target", "b")
+    rev.add_edge("a", "test_func")
+    rev.add_edge("b", "test_func")
+    results = compute_blast_radius(rev, "target")
+    assert len(results) == 1
+    assert results[0].test_function == "test_func"
+
+
+def test_target_not_in_graph():
+    # Target function is not in the graph at all
+    rev = nx.DiGraph()
+    rev.add_node("other_func")
+    results = compute_blast_radius(rev, "target")
+    assert results == []

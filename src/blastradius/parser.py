@@ -31,6 +31,43 @@ class CallExtractor(ast.NodeVisitor):
         pass
 
 
+class FileParser(ast.NodeVisitor):
+    """AST visitor to walk the file and extract qualified function names and calls."""
+
+    def __init__(self) -> None:
+        self.result: dict[str, list[str]] = {}
+        self.class_stack: list[str] = []
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        self.class_stack.append(node.name)
+        self.generic_visit(node)
+        self.class_stack.pop()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        if self.class_stack:
+            full_name = ".".join(self.class_stack) + "." + node.name
+        else:
+            full_name = node.name
+
+        extractor = CallExtractor()
+        for child in node.body:
+            extractor.visit(child)
+        self.result[full_name] = extractor.calls
+        self.generic_visit(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        if self.class_stack:
+            full_name = ".".join(self.class_stack) + "." + node.name
+        else:
+            full_name = node.name
+
+        extractor = CallExtractor()
+        for child in node.body:
+            extractor.visit(child)
+        self.result[full_name] = extractor.calls
+        self.generic_visit(node)
+
+
 def parse_file(filepath: str) -> dict[str, list[str]]:
     """Parse a Python file and extract function definitions and their calls.
 
@@ -44,16 +81,6 @@ def parse_file(filepath: str) -> dict[str, list[str]]:
         rich.print(f"[yellow]SKIP[/] {filepath}: {e}")
         return {}
 
-    result = {}
-
-    for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-
-        extractor = CallExtractor()
-        for child in node.body:
-            extractor.visit(child)
-
-        result[node.name] = extractor.calls
-
-    return result
+    parser = FileParser()
+    parser.visit(tree)
+    return parser.result
