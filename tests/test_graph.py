@@ -1,5 +1,5 @@
 import networkx as nx
-from blastradius.graph import build_graph, build_reverse_graph, load_graph, persist_graph
+from blastradius.graph import build_graph, build_reverse_graph, load, persist
 
 
 def test_build_graph():
@@ -44,14 +44,14 @@ def test_persist_and_load_graph(tmp_path):
     G = build_graph(index)
 
     path = tmp_path / "graph.json"
-    persist_graph(G, str(path))
+    persist(G, str(path))
 
-    loaded = load_graph(str(path))
+    loaded = load(str(path))
     assert loaded.nodes == G.nodes
     assert list(loaded.edges) == list(G.edges)
 
 
 def test_load_graph_non_existent():
-    loaded = load_graph("non_existent_graph.json")
+    loaded = load("non_existent_graph.json")
     assert isinstance(loaded, nx.DiGraph)
     assert len(loaded.nodes) == 0

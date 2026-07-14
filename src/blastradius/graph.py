@@ -37,7 +37,7 @@ def build_reverse_graph(G: nx.DiGraph) -> nx.DiGraph:
     return G.reverse(copy=True)
 
 
-def persist_graph(G: nx.DiGraph, path: str) -> None:
+def persist(G: nx.DiGraph, path: str) -> None:
     """Serialize the graph to disk in JSON format."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -45,13 +45,13 @@ def persist_graph(G: nx.DiGraph, path: str) -> None:
     p.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
-def load_graph(path: str) -> nx.DiGraph:
+def load(path: str) -> nx.DiGraph:
     """Deserialize the graph from a JSON file."""
     p = Path(path)
     if not p.exists():
         return nx.DiGraph()
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
-        return nx.node_link_graph(data)
+        return nx.node_link_graph(data, directed=True)
     except Exception:
         return nx.DiGraph()
