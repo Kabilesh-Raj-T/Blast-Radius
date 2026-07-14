@@ -109,13 +109,34 @@ def build_graph(index: dict[str, Any]) -> nx.MultiDiGraph:
             added_callees = set()
             local_types = sym_dict.get("local_types")
             for call_target in sym_dict.get("calls", []):
-                resolved = resolve_call(
-                    call_target, module, class_name, filepath, imports, symbols, local_types
-                )
-                for callee_id in resolved:
-                    if callee_id in symbols and callee_id not in added_callees:
-                        G.add_edge(sym_id, callee_id, relation="CALLS")
-                        added_callees.add(callee_id)
+                if call_target.startswith("dynamic:"):
+                    _, dyn_type, line, col = call_target.split(":")
+                    dyn_node_id = f"{sym_id}:dyn:{dyn_type}:{line}:{col}"
+                    G.add_node(
+                        dyn_node_id,
+                        kind="dynamic_call",
+                        type=dyn_type,
+                        line_no=int(line),
+                        col_offset=int(col),
+                        filepath=filepath,
+                    )
+                    # Caller -> DynamicCall
+                    G.add_edge(sym_id, dyn_node_id, relation="CALLS")
+                    # DynamicCall -> all function/method symbols in same module (potential targets)
+                    for other_id, other_dict in symbols.items():
+                        if (
+                            other_dict.get("kind") in ("function", "method")
+                            and other_dict.get("module") == module
+                        ):
+                            G.add_edge(dyn_node_id, other_id, relation="CALLS")
+                else:
+                    resolved = resolve_call(
+                        call_target, module, class_name, filepath, imports, symbols, local_types
+                    )
+                    for callee_id in resolved:
+                        if callee_id in symbols and callee_id not in added_callees:
+                            G.add_edge(sym_id, callee_id, relation="CALLS")
+                            added_callees.add(callee_id)
 
     # C. IMPORTS edges (Module -> Imported Module / Symbol)
     for file_p, import_map in imports.items():

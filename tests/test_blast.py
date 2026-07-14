@@ -340,3 +340,60 @@ def test_target_not_in_graph():
     rev.add_node("other_func")
     results = compute_blast_radius(rev, "target")
     assert results == []
+
+
+def test_dynamic_call_and_low_confidence():
+    from blastradius.graph import build_graph, build_reverse_graph
+
+    index = {
+        "symbols": {
+            "m.helper": {
+                "unique_id": "m.helper",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "helper",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": [],
+                "local_types": {},
+            },
+            "m.test_func": {
+                "unique_id": "m.test_func",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "test_func",
+                "decorators": [],
+                "line_no": 5,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["dynamic:getattr:10:0"],
+                "local_types": {},
+            },
+        },
+        "imports": {},
+    }
+    G = build_graph(index)
+    dyn_nodes = [n for n, attr in G.nodes(data=True) if attr.get("kind") == "dynamic_call"]
+    assert len(dyn_nodes) == 1
+    dyn_node = dyn_nodes[0]
+    assert G.nodes[dyn_node]["type"] == "getattr"
+
+    rev = build_reverse_graph(G)
+    results = compute_blast_radius(rev, "m.helper")
+    assert len(results) == 1
+    assert results[0].test_function == "m.test_func"
+    assert results[0].confidence == "LOW"

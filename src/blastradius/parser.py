@@ -135,7 +135,33 @@ class CallExtractor(ast.NodeVisitor):
 
     def visit_Call(self, node: ast.Call) -> None:
         call_name = get_call_name(node.func)
-        if call_name:
+        is_dynamic = False
+        dyn_type = None
+
+        if isinstance(node.func, ast.Name):
+            name_id = node.func.id
+            if name_id in ("getattr", "setattr", "eval", "exec", "__import__"):
+                is_dynamic = True
+                dyn_type = name_id
+            elif name_id == "partial":
+                is_dynamic = True
+                dyn_type = "partial"
+        elif isinstance(node.func, ast.Attribute):
+            attr_name = node.func.attr
+            if attr_name in ("import_module", "__getattr__", "__call__"):
+                is_dynamic = True
+                dyn_type = attr_name
+            elif call_name == "functools.partial":
+                is_dynamic = True
+                dyn_type = "partial"
+        elif isinstance(node.func, ast.Lambda):
+            is_dynamic = True
+            dyn_type = "lambda"
+
+        if is_dynamic and dyn_type:
+            dyn_target = f"dynamic:{dyn_type}:{node.lineno}:{node.col_offset}"
+            self.calls.append(dyn_target)
+        elif call_name:
             self.calls.append(call_name)
         self.generic_visit(node)
 
