@@ -94,5 +94,7 @@ def resolve_call(
     for sym_id, sym_dict in symbols.items():
         if sym_dict.get("function_name") == bare_name:
             matches.append(sym_id)
+        elif sym_dict.get("kind") == "class" and sym_id.split(".")[-1] == bare_name:
+            matches.append(sym_id)
 
     return matches

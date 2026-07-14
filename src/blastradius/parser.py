@@ -114,6 +114,41 @@ class ImportCollector(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+def get_call_name(node: ast.AST) -> str:
+    """Recursively resolve name/attribute nodes to a dot-separated string."""
+    if isinstance(node, ast.Name):
+        return node.id
+    elif isinstance(node, ast.Attribute):
+        val = get_call_name(node.value)
+        return f"{val}.{node.attr}" if val else node.attr
+    return ""
+
+
+class CallExtractor(ast.NodeVisitor):
+    """AST visitor to extract call targets within a function body.
+
+    Stops recursing at nested class/function boundaries to keep calls grouped.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    def visit_Call(self, node: ast.Call) -> None:
+        call_name = get_call_name(node.func)
+        if call_name:
+            self.calls.append(call_name)
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        pass
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        pass
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        pass
+
+
 class FileParser(ast.NodeVisitor):
     """AST visitor to walk the file and extract detailed symbols."""
 
@@ -177,6 +212,7 @@ class FileParser(ast.NodeVisitor):
             kind="class",
             method_kind=None,
             bases=bases,
+            calls=None,
         )
         self.symbols.append(symbol)
 
@@ -250,6 +286,12 @@ class FileParser(ast.NodeVisitor):
             kind = "function"
             method_kind = None
 
+        # Extract calls
+        extractor = CallExtractor()
+        for child in node.body:
+            extractor.visit(child)
+        calls = extractor.calls
+
         # Create symbol
         symbol = Symbol(
             unique_id=unique_id,
@@ -266,6 +308,7 @@ class FileParser(ast.NodeVisitor):
             kind=kind,
             method_kind=method_kind,
             bases=None,
+            calls=calls,
         )
         self.symbols.append(symbol)
 

@@ -219,3 +219,15 @@ from ..parent import parent_helper
     assert imports["parse_datetime"] == "utils.parser.parse_datetime"
     assert imports["local_helper"] == "billing.sibling.local_helper"
     assert imports["parent_helper"] == "parent.parent_helper"
+
+
+def test_function_calls_extraction(tmp_path):
+    code = """
+def main():
+    parse_date("2026-07-14")
+    self.validate()
+    obj.method()
+"""
+    result = _write_and_parse(tmp_path, code)
+    assert len(result) == 1
+    assert set(result[0].calls or []) == {"parse_date", "self.validate", "obj.method"}

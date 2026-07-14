@@ -2,44 +2,196 @@ import networkx as nx
 from blastradius.graph import build_graph, build_reverse_graph, load, persist
 
 
-def test_build_graph():
+def test_build_graph_hierarchy():
+    # Construct a rich mock index
     index = {
-        "utils/parser.py:parse_date": ["strptime"],  # strptime won't resolve -> no edge
-        "billing/invoice.py:generate_invoice": ["parse_date"],  # resolves -> edge billing -> utils
-        "isolated.py:dummy": [],  # no calls -> isolated node
+        "symbols": {
+            "utils.parser": {
+                "unique_id": "utils.parser",
+                "module": "utils",
+                "filepath": "utils.py",
+                "class_name": None,
+                "function_name": None,
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": None,
+                "nested_info": None,
+                "kind": "class",
+                "method_kind": None,
+                "bases": [],
+            },
+            "utils.parser.parse_date": {
+                "unique_id": "utils.parser.parse_date",
+                "module": "utils",
+                "filepath": "utils.py",
+                "class_name": "parser",
+                "function_name": "parse_date",
+                "decorators": [],
+                "line_no": 2,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "method",
+                "method_kind": "instance",
+                "bases": None,
+                "calls": [],
+            },
+            "billing.invoice.Invoice": {
+                "unique_id": "billing.invoice.Invoice",
+                "module": "billing.invoice",
+                "filepath": "billing/invoice.py",
+                "class_name": None,
+                "function_name": None,
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": None,
+                "nested_info": None,
+                "kind": "class",
+                "method_kind": None,
+                "bases": ["utils.parser"],
+            },
+            "billing.invoice.Invoice.generate": {
+                "unique_id": "billing.invoice.Invoice.generate",
+                "module": "billing.invoice",
+                "filepath": "billing/invoice.py",
+                "class_name": "Invoice",
+                "function_name": "generate",
+                "decorators": [],
+                "line_no": 3,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "method",
+                "method_kind": "instance",
+                "bases": None,
+                "calls": ["parse_date"],
+            },
+        },
+        "imports": {
+            "billing/invoice.py": {
+                "parse_date": "utils.parser.parse_date",
+                "utils": "utils",
+            }
+        },
     }
+
     G = build_graph(index)
 
-    # All caller keys must be nodes
-    assert "utils/parser.py:parse_date" in G.nodes
-    assert "billing/invoice.py:generate_invoice" in G.nodes
-    assert "isolated.py:dummy" in G.nodes
+    # 1. Assert nodes exist with attributes
+    assert "repo" in G.nodes
+    assert G.nodes["repo"]["kind"] == "repository"
 
-    # Check edges
-    # billing/invoice.py:generate_invoice calls parse_date,
-    # which resolves to utils/parser.py:parse_date
+    assert "pkg:billing" in G.nodes
+    assert G.nodes["pkg:billing"]["kind"] == "package"
 
-    assert G.has_edge("billing/invoice.py:generate_invoice", "utils/parser.py:parse_date")
-    assert G.number_of_edges() == 1
+    assert "module:utils" in G.nodes
+    assert G.nodes["module:utils"]["kind"] == "module"
+
+    assert "utils.parser" in G.nodes
+    assert G.nodes["utils.parser"]["kind"] == "class"
+
+    assert "utils.parser.parse_date" in G.nodes
+    assert G.nodes["utils.parser.parse_date"]["kind"] == "method"
+
+    # 2. Assert OWNS containment hierarchy
+    # repo owns module:utils
+    assert G.has_edge("repo", "module:utils")
+    assert G["repo"]["module:utils"][0]["relation"] == "OWNS"
+
+    # module:utils owns class utils.parser
+    assert G.has_edge("module:utils", "utils.parser")
+    assert G["module:utils"]["utils.parser"][0]["relation"] == "OWNS"
+
+    # class utils.parser owns method utils.parser.parse_date
+    assert G.has_edge("utils.parser", "utils.parser.parse_date")
+    assert G["utils.parser"]["utils.parser.parse_date"][0]["relation"] == "OWNS"
+
+    # 3. Assert INHERITS relationship
+    # billing.invoice.Invoice inherits utils.parser
+    assert G.has_edge("billing.invoice.Invoice", "utils.parser")
+    assert G["billing.invoice.Invoice"]["utils.parser"][0]["relation"] == "INHERITS"
+
+    assert G.has_edge("billing.invoice.Invoice.generate", "utils.parser.parse_date")
+    rel = G["billing.invoice.Invoice.generate"]["utils.parser.parse_date"][0]["relation"]
+    assert rel == "CALLS"
 
 
 def test_build_reverse_graph():
     index = {
-        "billing/invoice.py:generate_invoice": ["parse_date"],
-        "utils/parser.py:parse_date": [],
+        "symbols": {
+            "a": {
+                "unique_id": "a",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "a",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["b"],
+            },
+            "b": {
+                "unique_id": "b",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "b",
+                "decorators": [],
+                "line_no": 3,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": [],
+            },
+        },
+        "imports": {},
     }
     G = build_graph(index)
-    assert G.has_edge("billing/invoice.py:generate_invoice", "utils/parser.py:parse_date")
+    assert G.has_edge("a", "b")
 
     rev = build_reverse_graph(G)
-    assert rev.has_edge("utils/parser.py:parse_date", "billing/invoice.py:generate_invoice")
-    assert not rev.has_edge("billing/invoice.py:generate_invoice", "utils/parser.py:parse_date")
+    assert rev.has_edge("b", "a")
+    assert not rev.has_edge("a", "b")
 
 
 def test_persist_and_load_graph(tmp_path):
     index = {
-        "billing/invoice.py:generate_invoice": ["parse_date"],
-        "utils/parser.py:parse_date": [],
+        "symbols": {
+            "a": {
+                "unique_id": "a",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "a",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": [],
+            }
+        },
+        "imports": {},
     }
     G = build_graph(index)
 
@@ -53,65 +205,58 @@ def test_persist_and_load_graph(tmp_path):
 
 def test_load_graph_non_existent():
     loaded = load("non_existent_graph.json")
-    assert isinstance(loaded, nx.DiGraph)
+    assert isinstance(loaded, nx.MultiDiGraph)
     assert len(loaded.nodes) == 0
-
-
-def test_chain_forward_reverse():
-    # 3-node chain A -> B -> C
-    index = {
-        "a.py:func_a": ["func_b"],
-        "b.py:func_b": ["func_c"],
-        "c.py:func_c": [],
-    }
-    G = build_graph(index)
-    assert G.has_edge("a.py:func_a", "b.py:func_b")
-    assert G.has_edge("b.py:func_b", "c.py:func_c")
-    assert G.number_of_edges() == 2
-
-    rev = build_reverse_graph(G)
-    assert rev.has_edge("c.py:func_c", "b.py:func_b")
-    assert rev.has_edge("b.py:func_b", "a.py:func_a")
-    assert rev.number_of_edges() == 2
-
-
-def test_isolated_node():
-    index = {
-        "a.py:func_a": ["func_b"],
-        "b.py:func_b": [],
-        "isolated.py:func_i": [],
-    }
-    G = build_graph(index)
-    assert "isolated.py:func_i" in G.nodes
-    assert G.degree("isolated.py:func_i") == 0
 
 
 def test_parallel_edges_deduplicated():
     index = {
-        "a.py:func_a": ["func_b", "func_b"],  # calls func_b twice
-        "b.py:func_b": [],
+        "symbols": {
+            "a": {
+                "unique_id": "a",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "a",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["b", "b"],  # calls b twice
+            },
+            "b": {
+                "unique_id": "b",
+                "module": "m",
+                "filepath": "m.py",
+                "class_name": None,
+                "function_name": "b",
+                "decorators": [],
+                "line_no": 3,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": [],
+            },
+        },
+        "imports": {},
     }
     G = build_graph(index)
-    assert G.has_edge("a.py:func_a", "b.py:func_b")
-    # nx.DiGraph automatically deduplicates multiple calls to a single edge
-    assert G.number_of_edges() == 1
-
-
-def test_graph_from_simple_repo_fixture():
-    # Mock index for simple_repo fixture
-    index = {
-        "utils/parser.py:parse_date": ["strptime"],
-        "billing/invoice.py:generate_invoice": ["parse_date"],
-        "tests/test_billing.py:test_generate_invoice": ["generate_invoice"],
-    }
-    G = build_graph(index)
-
-    # billing/invoice.py:generate_invoice calls parse_date,
-    # which resolves to utils/parser.py:parse_date
-    assert G.has_edge("billing/invoice.py:generate_invoice", "utils/parser.py:parse_date")
-
-    # tests/test_billing.py:test_generate_invoice calls generate_invoice,
-    # which resolves to billing/invoice.py:generate_invoice
-    assert G.has_edge(
-        "tests/test_billing.py:test_generate_invoice", "billing/invoice.py:generate_invoice"
-    )
+    assert G.has_edge("a", "b")
+    # Verify we only have 1 CALLS edge from a to b
+    calls_edges = [
+        edge
+        for edge in G.edges(keys=True)
+        if edge[0] == "a"
+        and edge[1] == "b"
+        and G[edge[0]][edge[1]][edge[2]].get("relation") == "CALLS"
+    ]
+    assert len(calls_edges) == 1

@@ -90,30 +90,84 @@ def test_blast_radius_simple_repo_integration():
 
     # Mock index for simple_repo fixture
     index = {
-        "utils/parser.py:parse_date": ["strptime"],
-        "billing/invoice.py:generate_invoice": ["parse_date"],
-        "tests/test_billing.py:test_generate_invoice": ["generate_invoice"],
+        "symbols": {
+            "utils.parser.parse_date": {
+                "unique_id": "utils.parser.parse_date",
+                "module": "utils.parser",
+                "filepath": "utils/parser.py",
+                "class_name": None,
+                "function_name": "parse_date",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["strptime"],
+            },
+            "billing.invoice.generate_invoice": {
+                "unique_id": "billing.invoice.generate_invoice",
+                "module": "billing.invoice",
+                "filepath": "billing/invoice.py",
+                "class_name": None,
+                "function_name": "generate_invoice",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["parse_date"],
+            },
+            "tests.test_billing.test_generate_invoice": {
+                "unique_id": "tests.test_billing.test_generate_invoice",
+                "module": "tests.test_billing",
+                "filepath": "tests/test_billing.py",
+                "class_name": None,
+                "function_name": "test_generate_invoice",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["generate_invoice"],
+            },
+        },
+        "imports": {
+            "billing/invoice.py": {"parse_date": "utils.parser.parse_date"},
+            "tests/test_billing.py": {"generate_invoice": "billing.invoice.generate_invoice"},
+        },
     }
     G = build_graph(index)
     rev = build_reverse_graph(G)
 
-    # Compute blast radius of utils/parser.py:parse_date
-    results = compute_blast_radius(rev, "utils/parser.py:parse_date")
+    # Compute blast radius of utils.parser.parse_date
+    results = compute_blast_radius(rev, "utils.parser.parse_date")
 
-    # We expect tests/test_billing.py:test_generate_invoice to be affected
+    # We expect tests.test_billing.test_generate_invoice to be affected
     test_funcs = [r.test_function for r in results]
-    assert "tests/test_billing.py:test_generate_invoice" in test_funcs
+    assert "tests.test_billing.test_generate_invoice" in test_funcs
 
     # Find the specific affected test entry
     tgt_test = next(
-        r for r in results if r.test_function == "tests/test_billing.py:test_generate_invoice"
+        r for r in results if r.test_function == "tests.test_billing.test_generate_invoice"
     )
     assert tgt_test.test_file == "tests/test_billing.py"
     # Chain should be: parse_date -> generate_invoice -> test_generate_invoice
     assert tgt_test.chain == [
-        "utils/parser.py:parse_date",
-        "billing/invoice.py:generate_invoice",
-        "tests/test_billing.py:test_generate_invoice",
+        "utils.parser.parse_date",
+        "billing.invoice.generate_invoice",
+        "tests.test_billing.test_generate_invoice",
     ]
     assert tgt_test.depth == 2
     assert tgt_test.confidence == "MEDIUM"
@@ -127,15 +181,70 @@ def test_blast_radius_cycle_repo_integration():
 
     # Mock index for cycle_repo fixture
     index = {
-        "module_a.py:func_a": ["func_b"],
-        "module_b.py:func_b": ["func_a", "test_func"],
+        "symbols": {
+            "module_a.func_a": {
+                "unique_id": "module_a.func_a",
+                "module": "module_a",
+                "filepath": "module_a.py",
+                "class_name": None,
+                "function_name": "func_a",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["func_b"],
+            },
+            "module_b.func_b": {
+                "unique_id": "module_b.func_b",
+                "module": "module_b",
+                "filepath": "module_b.py",
+                "class_name": None,
+                "function_name": "func_b",
+                "decorators": [],
+                "line_no": 1,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": ["func_a", "test_func"],
+            },
+            "module_b.test_func": {
+                "unique_id": "module_b.test_func",
+                "module": "module_b",
+                "filepath": "module_b.py",
+                "class_name": None,
+                "function_name": "test_func",
+                "decorators": [],
+                "line_no": 5,
+                "col_offset": 0,
+                "visibility": "public",
+                "async_sync": "sync",
+                "nested_info": None,
+                "kind": "function",
+                "method_kind": None,
+                "bases": None,
+                "calls": [],
+            },
+        },
+        "imports": {
+            "module_a.py": {"func_b": "module_b.func_b"},
+            "module_b.py": {"func_a": "module_a.func_a"},
+        },
     }
     G = build_graph(index)
     rev = build_reverse_graph(G)
 
     # Time the BFS traversal to ensure cycle safety and that it does not loop infinitely
     start_time = time.perf_counter()
-    results = compute_blast_radius(rev, "module_a.py:func_a")
+    results = compute_blast_radius(rev, "module_a.func_a")
     duration = time.perf_counter() - start_time
 
     # Assertions

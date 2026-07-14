@@ -19,18 +19,17 @@ class AffectedTest:
 def _is_test(node: str) -> bool:
     """Classify if a node represents a test file or a test function.
 
-    A node is a test if the filename starts with 'test_' or the function name
-    starts with 'test_'.
+    A node is a test if the filename starts with 'test_', the function name
+    starts with 'test_', or any dot-separated component starts with 'test_'.
     """
     if ":" in node:
         filepath, funcname = node.rsplit(":", 1)
-    else:
-        filepath, funcname = "", node
+        is_test_file = Path(filepath).name.startswith("test_") if filepath else False
+        is_test_func = funcname.startswith("test_")
+        return is_test_file or is_test_func
 
-    is_test_file = Path(filepath).name.startswith("test_") if filepath else False
-    is_test_func = funcname.startswith("test_")
-
-    return is_test_file or is_test_func
+    parts = node.split(".")
+    return any(p.startswith("test_") for p in parts)
 
 
 def _confidence(depth: int) -> str:
@@ -77,7 +76,9 @@ def compute_blast_radius(
             if ":" in node:
                 filepath, _ = node.rsplit(":", 1)
             else:
-                filepath = ""
+                # Retrieve filepath from graph node metadata if present
+                node_data = reverse_graph.nodes[node]
+                filepath = node_data.get("filepath", "") if node_data else ""
 
             affected.append(
                 AffectedTest(
@@ -93,7 +94,19 @@ def compute_blast_radius(
 
         # Enqueue successors (which are callers in the original call graph)
         for successor in reverse_graph.successors(node):
-            if successor not in visited:
+            # Check edge type to ensure we only traverse execution calls
+            is_call = False
+            if reverse_graph.is_multigraph():
+                edges_attrs = reverse_graph[node][successor].values()
+                if all(d.get("relation") is None for d in edges_attrs):
+                    is_call = True
+                else:
+                    is_call = any(d.get("relation") == "CALLS" for d in edges_attrs)
+            else:
+                rel = reverse_graph[node][successor].get("relation")
+                is_call = (rel == "CALLS") or (rel is None)
+
+            if is_call and successor not in visited:
                 queue.append((successor, chain + [successor], depth + 1))
 
     return affected
