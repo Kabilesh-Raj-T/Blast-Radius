@@ -1,0 +1,8 @@
+{
+  "module_a.py:func_a": [
+    "func_b"
+  ],
+  "module_b.py:func_b": [
+    "func_a"
+  ]
+}

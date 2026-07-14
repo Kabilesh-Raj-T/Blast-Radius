@@ -113,3 +113,25 @@ def test_blast_radius_simple_repo_integration():
     ]
     assert tgt_test.depth == 2
     assert tgt_test.confidence == "MEDIUM"
+
+
+@pytest.mark.integration
+def test_blast_radius_cycle_repo_integration():
+    import time
+
+    from blastradius.graph import build_graph, build_reverse_graph
+    from blastradius.indexer import index_repo
+
+    # Index the cycle_repo fixture
+    index = index_repo("tests/fixtures/cycle_repo")
+    G = build_graph(index)
+    rev = build_reverse_graph(G)
+
+    # Time the BFS traversal to ensure cycle safety and that it does not loop infinitely
+    start_time = time.perf_counter()
+    results = compute_blast_radius(rev, "module_a.py:func_a")
+    duration = time.perf_counter() - start_time
+
+    # Assertions
+    assert duration < 1.0
+    assert isinstance(results, list)
