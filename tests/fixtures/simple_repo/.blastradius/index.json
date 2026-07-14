@@ -1,0 +1,12 @@
+{
+  "billing/invoice.py:generate_invoice": [
+    "parse_date",
+    "strftime"
+  ],
+  "tests/test_billing.py:test_generate_invoice": [
+    "generate_invoice"
+  ],
+  "utils/parser.py:parse_date": [
+    "strptime"
+  ]
+}

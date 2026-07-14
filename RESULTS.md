@@ -33,5 +33,38 @@ If we filter out basic built-ins (like `isinstance`, `getattr`, `len`), typing c
 | 4 | `startswith` | 12 | Prefix matching (e.g., protocol verification) |
 | 5 | `environ` | 10 | Environment lookup (e.g., proxy configuration) |
 
+
+## Flask library
+
+The `flask` library (cloned from `https://github.com/pallets/flask`) was indexed and its forward/reverse call graphs were analyzed.
+
+- **Total Nodes (Function definitions)**: 310
+- **Total Edges (Resolved call sites)**: 504
+
+### Top 5 Nodes by In-Degree (Most Called Internally)
+
+In-degree represents the number of other internal Flask functions that directly call the target function:
+
+| Rank | Function / Method | In-Degree (Callers) | Description |
+| --- | --- | --- | --- |
+| 1 | `src/flask/ctx.py:get` | 25 | Context getter helper |
+| 2 | `src/flask/sansio/scaffold.py:get` | 25 | Route/endpoint scaffold getter |
+| 3 | `src/flask/ctx.py:setdefault` | 16 | Context dictionary initialization |
+| 4 | `src/flask/app.py:ensure_sync` | 12 | Helper to run async view functions synchronously |
+| 5 | `src/flask/sansio/blueprints.py:record_once` | 10 | Blueprint deferred callback registration |
+
+### Top 5 Nodes by Out-Degree (Calls the Most Other Functions)
+
+Out-degree represents the number of unique internal functions called by the target function:
+
+| Rank | Function / Method | Out-Degree (Callees) | Description |
+| --- | --- | --- | --- |
+| 1 | `src/flask/app.py:__init__` | 20 | Main Flask app constructor setting up defaults |
+| 2 | `src/flask/sansio/app.py:__init__` | 18 | Sans-IO core app constructor setup |
+| 3 | `src/flask/blueprints.py:__init__` | 15 | Blueprint setup constructor |
+| 4 | `src/flask/config.py:__init__` | 15 | Configuration setup constructor |
+| 5 | `src/flask/debughelpers.py:__init__` | 15 | Debug helper initialization |
+
 ---
-*Generated dynamically using `scripts/analyze_requests.py`.*
+*Generated dynamically using `scripts/analyze_requests.py` and `scripts/analyze_flask.py`.*
+
