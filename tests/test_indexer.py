@@ -2,6 +2,7 @@ import time
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from blastradius.indexer import index_repo, load_index, save_index
 
 
@@ -112,3 +113,63 @@ def test_index_repo_incremental_cache(tmp_path):
     index4 = index_repo(str(repo))
     assert "a.py:func_a" in index4
     assert "b.py:func_b" not in index4
+
+
+@pytest.mark.integration
+def test_simple_repo_integration(tmp_path):
+    # Copy simple_repo files into a temp directory so we can run and mutate it
+    import shutil
+
+    src_dir = Path("tests/fixtures/simple_repo")
+    dest_dir = tmp_path / "simple_repo"
+    shutil.copytree(src_dir, dest_dir)
+
+    # 1. index_repo returns keys for all 3 functions across the 3 files
+    index = index_repo(str(dest_dir))
+    assert "utils/parser.py:parse_date" in index
+    assert index["utils/parser.py:parse_date"] == ["strptime"]
+    assert "billing/invoice.py:generate_invoice" in index
+    assert "parse_date" in index["billing/invoice.py:generate_invoice"]
+    assert "tests/test_billing.py:test_generate_invoice" in index
+    assert index["tests/test_billing.py:test_generate_invoice"] == ["generate_invoice"]
+
+    # 2. Exclude pattern works: exclude=['tests'] removes test file keys
+    index_ex = index_repo(
+        str(dest_dir), exclude=["tests", "__pycache__"], index_dir=str(dest_dir / ".blastradius_ex")
+    )
+    assert "utils/parser.py:parse_date" in index_ex
+    assert "billing/invoice.py:generate_invoice" in index_ex
+    assert "tests/test_billing.py:test_generate_invoice" not in index_ex
+
+    # 3. save_index and load_index round-trip: saved JSON loads back to identical dict
+    index_file = dest_dir / "index_custom.json"
+    save_index(index, str(index_file))
+    loaded = load_index(str(index_file))
+    assert loaded == index
+
+    # 4. Incremental cache: index once, modify one file, re-index,
+    # verify only 1 file was re-parsed (check mtime_cache.json)
+
+    cache_file = dest_dir / ".blastradius" / "mtime_cache.json"
+    assert cache_file.exists()
+
+    # Re-index without changes: check that parse_file is not called
+    with patch("blastradius.indexer.parse_file") as mock_parse:
+        index_re1 = index_repo(str(dest_dir))
+        assert index_re1 == index
+        mock_parse.assert_not_called()
+
+    # Modify utils/parser.py
+    parser_py = dest_dir / "utils" / "parser.py"
+    stat = parser_py.stat()
+    parser_py.write_text("def parse_date(date_str):\n    return 'new_parse'\n", encoding="utf-8")
+
+    new_mtime = stat.st_mtime + 5.0
+    import os
+
+    os.utime(str(parser_py), (new_mtime, new_mtime))
+
+    with patch("blastradius.indexer.parse_file", return_value={"parse_date": []}) as mock_parse:
+        index_re2 = index_repo(str(dest_dir))
+        mock_parse.assert_called_once_with(str(parser_py))
+        assert index_re2["utils/parser.py:parse_date"] == []
