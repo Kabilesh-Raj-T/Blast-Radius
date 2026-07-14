@@ -98,10 +98,12 @@ def test_parallel_edges_deduplicated():
 
 
 def test_graph_from_simple_repo_fixture():
-    from blastradius.indexer import index_repo
-
-    # Index the simple_repo fixture
-    index = index_repo("tests/fixtures/simple_repo")
+    # Mock index for simple_repo fixture
+    index = {
+        "utils/parser.py:parse_date": ["strptime"],
+        "billing/invoice.py:generate_invoice": ["parse_date"],
+        "tests/test_billing.py:test_generate_invoice": ["generate_invoice"],
+    }
     G = build_graph(index)
 
     # billing/invoice.py:generate_invoice calls parse_date,

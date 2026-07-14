@@ -2,11 +2,12 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 from blastradius.parser import parse_file
 
 
-def load_index(path: str) -> dict[str, list[str]]:
+def load_index(path: str) -> dict[str, dict[str, Any]]:
     """Load the index dictionary from a JSON file.
 
     Returns an empty dict if the file does not exist.
@@ -21,7 +22,7 @@ def load_index(path: str) -> dict[str, list[str]]:
         return {}
 
 
-def save_index(index: dict[str, list[str]], path: str) -> None:
+def save_index(index: dict[str, dict[str, Any]], path: str) -> None:
     """Save the index dictionary to a JSON file."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -51,8 +52,8 @@ def index_repo(
     repo_path: str,
     exclude: list[str] | None = None,
     index_dir: str | None = None,
-) -> dict[str, list[str]]:
-    """Walk the repository and build the master index of all Python function calls.
+) -> dict[str, dict[str, Any]]:
+    """Walk the repository and build a master symbol table.
 
     Uses mtime-based incremental caching to skip unchanged files.
     """
@@ -72,12 +73,17 @@ def index_repo(
     # Load existing index and cache
     prev_index = load_index(str(index_path))
     prev_cache = {}
-    if cache_path.exists():
-        try:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                prev_cache = json.load(f)
-        except Exception:
-            prev_cache = {}
+
+    # If the loaded index contains old format data (lists instead of dicts), discard it
+    if prev_index and not all(isinstance(v, dict) for v in prev_index.values()):
+        prev_index = {}
+    else:
+        if cache_path.exists():
+            try:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    prev_cache = json.load(f)
+            except Exception:
+                prev_cache = {}
 
     new_index = {}
     current_cache = {}
@@ -103,16 +109,16 @@ def index_repo(
         reused = False
         if rel_path_str in prev_cache and prev_cache[rel_path_str] == current_mtime:
             # Find and reuse previous index entries for this file
-            file_prefix = f"{rel_path_str}:"
-            for k, v in prev_index.items():
-                if k.startswith(file_prefix):
-                    new_index[k] = v
+            # A symbol belongs to this file if its filepath field matches
+            for symbol_id, symbol_dict in prev_index.items():
+                if isinstance(symbol_dict, dict) and symbol_dict.get("filepath") == rel_path_str:
+                    new_index[symbol_id] = symbol_dict
             reused = True
 
         if not reused:
-            file_results = parse_file(str(filepath))
-            for fn_name, calls in file_results.items():
-                new_index[f"{rel_path_str}:{fn_name}"] = calls
+            symbols = parse_file(str(filepath), str(repo_dir))
+            for symbol in symbols:
+                new_index[symbol.unique_id] = symbol.to_dict()
 
     # Save outputs
     save_index(new_index, str(index_path))

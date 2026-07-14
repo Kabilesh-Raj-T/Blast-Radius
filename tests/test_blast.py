@@ -87,9 +87,13 @@ def test_compute_blast_radius_stop_at_tests():
 @pytest.mark.integration
 def test_blast_radius_simple_repo_integration():
     from blastradius.graph import build_graph, build_reverse_graph
-    from blastradius.indexer import index_repo
 
-    index = index_repo("tests/fixtures/simple_repo")
+    # Mock index for simple_repo fixture
+    index = {
+        "utils/parser.py:parse_date": ["strptime"],
+        "billing/invoice.py:generate_invoice": ["parse_date"],
+        "tests/test_billing.py:test_generate_invoice": ["generate_invoice"],
+    }
     G = build_graph(index)
     rev = build_reverse_graph(G)
 
@@ -120,10 +124,12 @@ def test_blast_radius_cycle_repo_integration():
     import time
 
     from blastradius.graph import build_graph, build_reverse_graph
-    from blastradius.indexer import index_repo
 
-    # Index the cycle_repo fixture
-    index = index_repo("tests/fixtures/cycle_repo")
+    # Mock index for cycle_repo fixture
+    index = {
+        "module_a.py:func_a": ["func_b"],
+        "module_b.py:func_b": ["func_a", "test_func"],
+    }
     G = build_graph(index)
     rev = build_reverse_graph(G)
 

@@ -1,182 +1,156 @@
 from blastradius.parser import parse_file
+from blastradius.symbol import Symbol
 
 
-def _write_and_parse(tmp_path, code: str) -> dict[str, list[str]]:
+def _write_and_parse(tmp_path, code: str) -> list[Symbol]:
     """Helper to write code to a temp file and parse it."""
     file_path = tmp_path / "temp_source.py"
     file_path.write_text(code, encoding="utf-8")
-    return parse_file(str(file_path))
+    return parse_file(str(file_path), str(tmp_path))
 
 
-def test_single_function_no_calls(tmp_path):
+def test_single_function_attributes(tmp_path):
     code = """
 def my_func():
-    x = 1 + 2
-    return x
+    return 1
 """
     result = _write_and_parse(tmp_path, code)
-    assert result == {"my_func": []}
-
-
-def test_direct_call(tmp_path):
-    code = """
-def main():
-    parse_date("2026-07-14")
-"""
-    result = _write_and_parse(tmp_path, code)
-    assert result == {"main": ["parse_date"]}
-
-
-def test_method_call_self(tmp_path):
-    code = """
-def test_func():
-    self.validate()
-"""
-    result = _write_and_parse(tmp_path, code)
-    assert result == {"test_func": ["validate"]}
-
-
-def test_method_call_obj(tmp_path):
-    code = """
-def run():
-    obj.method()
-"""
-    result = _write_and_parse(tmp_path, code)
-    assert result == {"run": ["method"]}
-
-
-def test_two_functions_calling_each_other(tmp_path):
-    code = """
-def func_a():
-    func_b()
-
-def func_b():
-    func_a()
-"""
-    result = _write_and_parse(tmp_path, code)
-    assert result == {
-        "func_a": ["func_b"],
-        "func_b": ["func_a"],
-    }
-
-
-def test_nested_function_definitions(tmp_path):
-    code = """
-def outer():
-    def inner():
-        helper_a()
-    inner()
-    helper_b()
-"""
-    result = _write_and_parse(tmp_path, code)
-    # calls inside inner() must belong to inner, not outer
-    assert "outer" in result
-    assert "inner" in result
-    assert result["outer"] == ["inner", "helper_b"]
-    assert result["inner"] == ["helper_a"]
+    assert len(result) == 1
+    sym = result[0]
+    assert sym.function_name == "my_func"
+    assert sym.unique_id == "temp_source.my_func"
+    assert sym.module == "temp_source"
+    assert sym.class_name is None
+    assert sym.decorators == []
+    assert sym.visibility == "public"
+    assert sym.async_sync == "sync"
+    assert sym.nested_info is None
+    assert sym.line_no == 2
+    assert sym.col_offset == 0
 
 
 def test_async_function(tmp_path):
     code = """
 async def fetch_data():
-    await resolve_url()
-    return await api.get()
+    pass
 """
     result = _write_and_parse(tmp_path, code)
-    assert result == {"fetch_data": ["resolve_url", "get"]}
+    assert len(result) == 1
+    assert result[0].async_sync == "async"
 
 
-def test_complex_arguments(tmp_path):
+def test_class_method(tmp_path):
     code = """
-def process():
-    format_output(get_data(param=1), "json")
+class Invoice:
+    def generate(self):
+        pass
 """
     result = _write_and_parse(tmp_path, code)
-    # The arguments to format_output contains get_data call.
-    # Order of walking: ast.walk/generic_visit should visit all.
-    # format_output is visited, get_data is visited.
-    assert "process" in result
-    # It should extract both calls
-    assert set(result["process"]) == {"format_output", "get_data"}
+    assert len(result) == 1
+    sym = result[0]
+    assert sym.function_name == "generate"
+    assert sym.class_name == "Invoice"
+    assert sym.unique_id == "temp_source.Invoice.generate"
 
 
-def test_decorators_do_not_interfere(tmp_path):
+def test_nested_classes(tmp_path):
     code = """
-@register
+class Outer:
+    class Inner:
+        def method(self):
+            pass
+"""
+    result = _write_and_parse(tmp_path, code)
+    assert len(result) == 1
+    sym = result[0]
+    assert sym.function_name == "method"
+    assert sym.class_name == "Outer.Inner"
+    assert sym.unique_id == "temp_source.Outer.Inner.method"
+
+
+def test_decorators_extraction(tmp_path):
+    code = """
+@staticmethod
+@abc.abstractmethod
 @lru_cache(maxsize=128)
 def worker():
-    compute()
+    pass
 """
     result = _write_and_parse(tmp_path, code)
-    # Note: the decorator call lru_cache(maxsize=128) is outside the function body.
-    # So compute() is inside, and should be collected.
-    assert result == {"worker": ["compute"]}
+    assert len(result) == 1
+    assert result[0].decorators == ["staticmethod", "abc.abstractmethod", "lru_cache"]
 
 
-def test_nested_ifs_and_loops(tmp_path):
+def test_visibility(tmp_path):
     code = """
-def check_all(items):
-    for item in items:
-        if item.is_valid():
-            log_success(item)
-        else:
-            log_failure()
+def public_func(): pass
+def _private_func(): pass
+def __init__(self): pass
 """
     result = _write_and_parse(tmp_path, code)
-    assert "check_all" in result
-    assert set(result["check_all"]) == {"is_valid", "log_success", "log_failure"}
+    assert len(result) == 3
+
+    # Sort by line number to assert in order
+    sorted_res = sorted(result, key=lambda s: s.line_no)
+    assert sorted_res[0].function_name == "public_func"
+    assert sorted_res[0].visibility == "public"
+
+    assert sorted_res[1].function_name == "_private_func"
+    assert sorted_res[1].visibility == "private"
+
+    assert sorted_res[2].function_name == "__init__"
+    assert sorted_res[2].visibility == "public"  # dunders are public
+
+
+def test_nested_functions(tmp_path):
+    code = """
+def outer():
+    def inner():
+        pass
+"""
+    result = _write_and_parse(tmp_path, code)
+    assert len(result) == 2
+
+    outer_sym = next(s for s in result if s.function_name == "outer")
+    inner_sym = next(s for s in result if s.function_name == "inner")
+
+    assert outer_sym.unique_id == "temp_source.outer"
+    assert outer_sym.nested_info is None
+
+    assert inner_sym.unique_id == "temp_source.outer.inner"
+    assert inner_sym.nested_info == {"parent_function": "outer", "parent_id": "temp_source.outer"}
 
 
 def test_parse_file_syntax_error(tmp_path):
     code = "def invalid_syntax("
     result = _write_and_parse(tmp_path, code)
-    assert result == {}
+    assert result == []
 
 
 def test_non_utf8_bytes(tmp_path):
     file_path = tmp_path / "binary.py"
     file_path.write_bytes(b"\xff\xfe")
     result = parse_file(str(file_path))
-    assert result == {}
+    assert result == []
 
 
 def test_empty_file(tmp_path):
     result = _write_and_parse(tmp_path, "")
-    assert result == {}
+    assert result == []
 
 
 def test_only_imports_no_functions(tmp_path):
     code = """
 import os
 import sys
-from pathlib import Path
 """
     result = _write_and_parse(tmp_path, code)
-    assert result == {}
+    assert result == []
 
 
 def test_lambda_assignment_not_tracked(tmp_path):
     code = """
 fn = lambda x: print(x)
-def test_func():
-    fn(1)
 """
     result = _write_and_parse(tmp_path, code)
-    # The lambda function assignment (fn = lambda x: print(x)) is not a FunctionDef,
-    # so we shouldn't have a key for "fn" (or if it exists, it shouldn't be captured as a function).
-    # But "test_func" is a FunctionDef calling "fn", which should be captured.
-    assert "fn" not in result
-    assert result.get("test_func") == ["fn"]
-
-
-def test_decorator_calls_not_tracked(tmp_path):
-    code = """
-@my_decorator(arg_call())
-def test_func():
-    actual_call()
-"""
-    result = _write_and_parse(tmp_path, code)
-    # decorator calls (like arg_call) are outside the function body,
-    # so they must not be tracked under test_func.
-    # Only calls inside the body (like actual_call) should be tracked.
-    assert result == {"test_func": ["actual_call"]}
+    assert result == []
