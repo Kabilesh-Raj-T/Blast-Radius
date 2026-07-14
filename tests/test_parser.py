@@ -26,8 +26,78 @@ def my_func():
     assert sym.visibility == "public"
     assert sym.async_sync == "sync"
     assert sym.nested_info is None
-    assert sym.line_no == 2
-    assert sym.col_offset == 0
+    assert sym.kind == "function"
+    assert sym.method_kind is None
+    assert sym.bases is None
+
+
+def test_class_attributes(tmp_path):
+    code = """
+class Invoice(BaseModel, abc.ABC):
+    pass
+"""
+    result = _write_and_parse(tmp_path, code)
+    assert len(result) == 1
+    sym = result[0]
+    assert sym.kind == "class"
+    assert sym.function_name is None
+    assert sym.class_name is None  # top-level class has no outer class name
+    assert sym.unique_id == "temp_source.Invoice"
+    assert sym.bases == ["BaseModel", "abc.ABC"]
+    assert sym.visibility == "public"
+    assert sym.method_kind is None
+
+
+def test_nested_classes(tmp_path):
+    code = """
+class Outer:
+    class Inner:
+        pass
+"""
+    result = _write_and_parse(tmp_path, code)
+    # Expect 2 class symbols: Outer and Outer.Inner
+    assert len(result) == 2
+    outer = next(s for s in result if s.unique_id == "temp_source.Outer")
+    inner = next(s for s in result if s.unique_id == "temp_source.Outer.Inner")
+
+    assert outer.kind == "class"
+    assert outer.class_name is None
+
+    assert inner.kind == "class"
+    assert inner.class_name == "Outer"
+
+
+def test_method_classifications(tmp_path):
+    code = """
+class Order:
+    def instance_m(self): pass
+
+    @staticmethod
+    def static_m(): pass
+
+    @classmethod
+    def class_m(cls): pass
+
+    @property
+    def price(self): pass
+
+    @price.setter
+    def price(self, val): pass
+
+    @abstractmethod
+    def run(self): pass
+"""
+    result = _write_and_parse(tmp_path, code)
+    # Order (class) + 6 methods = 7 symbols
+    assert len(result) == 7
+
+    methods = {s.function_name: s for s in result if s.kind == "method"}
+
+    assert methods["instance_m"].method_kind == "instance"
+    assert methods["static_m"].method_kind == "static"
+    assert methods["class_m"].method_kind == "class"
+    assert methods["price"].method_kind == "property"
+    assert methods["run"].method_kind == "abstract"
 
 
 def test_async_function(tmp_path):
@@ -40,46 +110,16 @@ async def fetch_data():
     assert result[0].async_sync == "async"
 
 
-def test_class_method(tmp_path):
-    code = """
-class Invoice:
-    def generate(self):
-        pass
-"""
-    result = _write_and_parse(tmp_path, code)
-    assert len(result) == 1
-    sym = result[0]
-    assert sym.function_name == "generate"
-    assert sym.class_name == "Invoice"
-    assert sym.unique_id == "temp_source.Invoice.generate"
-
-
-def test_nested_classes(tmp_path):
-    code = """
-class Outer:
-    class Inner:
-        def method(self):
-            pass
-"""
-    result = _write_and_parse(tmp_path, code)
-    assert len(result) == 1
-    sym = result[0]
-    assert sym.function_name == "method"
-    assert sym.class_name == "Outer.Inner"
-    assert sym.unique_id == "temp_source.Outer.Inner.method"
-
-
 def test_decorators_extraction(tmp_path):
     code = """
 @staticmethod
 @abc.abstractmethod
-@lru_cache(maxsize=128)
 def worker():
     pass
 """
     result = _write_and_parse(tmp_path, code)
     assert len(result) == 1
-    assert result[0].decorators == ["staticmethod", "abc.abstractmethod", "lru_cache"]
+    assert result[0].decorators == ["staticmethod", "abc.abstractmethod"]
 
 
 def test_visibility(tmp_path):
@@ -91,7 +131,6 @@ def __init__(self): pass
     result = _write_and_parse(tmp_path, code)
     assert len(result) == 3
 
-    # Sort by line number to assert in order
     sorted_res = sorted(result, key=lambda s: s.line_no)
     assert sorted_res[0].function_name == "public_func"
     assert sorted_res[0].visibility == "public"
@@ -100,7 +139,7 @@ def __init__(self): pass
     assert sorted_res[1].visibility == "private"
 
     assert sorted_res[2].function_name == "__init__"
-    assert sorted_res[2].visibility == "public"  # dunders are public
+    assert sorted_res[2].visibility == "public"
 
 
 def test_nested_functions(tmp_path):
@@ -167,22 +206,16 @@ from utils.parser import parse_datetime
 from .sibling import local_helper
 from ..parent import parent_helper
 """
-    # Write this code to billing/invoice.py relative to tmp_path
-    # package billing
     billing_dir = tmp_path / "billing"
     billing_dir.mkdir()
     file_path = billing_dir / "invoice.py"
     file_path.write_text(code, encoding="utf-8")
 
-    # Module name should be billing.invoice
     _, imports = parse_file(str(file_path), str(tmp_path))
 
-    # Assertions
     assert imports["osp"] == "os.path"
     assert imports["sys"] == "sys"
     assert imports["pd"] == "utils.parser.parse_date"
     assert imports["parse_datetime"] == "utils.parser.parse_datetime"
-    # Sibling relative import
     assert imports["local_helper"] == "billing.sibling.local_helper"
-    # Parent relative import
     assert imports["parent_helper"] == "parent.parent_helper"

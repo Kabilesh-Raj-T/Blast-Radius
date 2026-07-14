@@ -138,6 +138,48 @@ class FileParser(ast.NodeVisitor):
         self.function_ids: list[str] = []
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        module_prefix = self.module + "." if self.module else ""
+        class_name = ".".join(self.class_stack) if self.class_stack else None
+
+        if class_name:
+            unique_id = f"{module_prefix}{class_name}.{node.name}"
+        else:
+            unique_id = f"{module_prefix}{node.name}"
+
+        # Resolve inheritance bases
+        bases = []
+        for base in node.bases:
+            base_name = get_decorator_name(base)
+            if base_name:
+                bases.append(base_name)
+
+        # Visibility
+        if node.name.startswith("_") and not (
+            node.name.startswith("__") and node.name.endswith("__")
+        ):
+            visibility = "private"
+        else:
+            visibility = "public"
+
+        # Create Class symbol
+        symbol = Symbol(
+            unique_id=unique_id,
+            module=self.module,
+            filepath=self.rel_filepath,
+            class_name=class_name,
+            function_name=None,
+            decorators=[],
+            line_no=node.lineno,
+            col_offset=node.col_offset,
+            visibility=visibility,
+            async_sync=None,
+            nested_info=None,
+            kind="class",
+            method_kind=None,
+            bases=bases,
+        )
+        self.symbols.append(symbol)
+
         self.class_stack.append(node.name)
         self.generic_visit(node)
         self.class_stack.pop()
@@ -188,6 +230,26 @@ class FileParser(ast.NodeVisitor):
         # 5. Async/sync
         async_sync = "async" if is_async else "sync"
 
+        # 6. Kind & Method classification
+        if class_name:
+            kind = "method"
+            if "staticmethod" in decorators:
+                method_kind = "static"
+            elif "classmethod" in decorators:
+                method_kind = "class"
+            elif any(
+                d == "property" or d.endswith(".setter") or d.endswith(".getter")
+                for d in decorators
+            ):
+                method_kind = "property"
+            elif any(d == "abstractmethod" or d == "abc.abstractmethod" for d in decorators):
+                method_kind = "abstract"
+            else:
+                method_kind = "instance"
+        else:
+            kind = "function"
+            method_kind = None
+
         # Create symbol
         symbol = Symbol(
             unique_id=unique_id,
@@ -201,6 +263,9 @@ class FileParser(ast.NodeVisitor):
             visibility=visibility,
             async_sync=async_sync,
             nested_info=nested_info,
+            kind=kind,
+            method_kind=method_kind,
+            bases=None,
         )
         self.symbols.append(symbol)
 

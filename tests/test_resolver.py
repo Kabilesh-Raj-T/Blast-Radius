@@ -87,3 +87,20 @@ def test_resolve_call_external_unregistered():
     symbols = {}
     res = resolve_call("json.loads", "module", None, "file.py", imports, symbols)
     assert res == ["json.loads"]
+
+
+def test_resolve_call_cls_method():
+    imports = {"file.py": {}}
+    symbols = {"module.MyClass.setup": {"function_name": "setup"}}
+    res = resolve_call("cls.setup", "module", "MyClass", "file.py", imports, symbols)
+    assert res == ["module.MyClass.setup"]
+
+
+def test_resolve_call_class_method_prefix():
+    imports = {"file.py": {}}
+    symbols = {
+        "module.MyClass": {"kind": "class"},
+        "module.MyClass.save": {"function_name": "save"},
+    }
+    res = resolve_call("MyClass.save", "module", None, "file.py", imports, symbols)
+    assert res == ["module.MyClass.save"]

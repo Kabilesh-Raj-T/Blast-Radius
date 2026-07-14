@@ -66,6 +66,17 @@ def resolve_call(
             if fqn in symbols:
                 return [fqn]
 
+    # 2b. Resolve as Local Class Method (Class.method where Class is locally defined)
+    if len(parts) > 1:
+        class_prefix = parts[0]
+        method_name = parts[1]
+        module_prefix = f"{caller_module}." if caller_module else ""
+        class_fqn = f"{module_prefix}{class_prefix}"
+        if class_fqn in symbols and symbols[class_fqn].get("kind") == "class":
+            fqn = f"{class_fqn}.{method_name}"
+            if fqn in symbols:
+                return [fqn]
+
     # 3. Resolve as Local Module Symbol (bare function call)
     if len(parts) == 1:
         module_prefix = f"{caller_module}." if caller_module else ""

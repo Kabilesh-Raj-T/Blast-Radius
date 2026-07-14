@@ -31,6 +31,9 @@ def make_symbol(
         visibility=visibility,
         async_sync=async_sync,
         nested_info=nested_info,
+        kind="function",
+        method_kind=None,
+        bases=None,
     )
 
 

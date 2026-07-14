@@ -6,19 +6,22 @@ from typing import Any
 
 @dataclass
 class Symbol:
-    """Represents a definition symbol (function, method) in the codebase."""
+    """Represents a definition symbol (class, function, method) in the codebase."""
 
     unique_id: str
     module: str
     filepath: str
     class_name: str | None
-    function_name: str
+    function_name: str | None
     decorators: list[str]
     line_no: int
     col_offset: int
     visibility: str  # "public" or "private"
-    async_sync: str  # "async" or "sync"
+    async_sync: str | None
     nested_info: dict[str, Any] | None  # e.g., {"parent_function": str, "parent_id": str}
+    kind: str  # "class", "function", "method"
+    method_kind: str | None  # "static", "class", "instance", "property", "abstract"
+    bases: list[str] | None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the symbol to a dictionary."""
@@ -39,4 +42,7 @@ class Symbol:
             visibility=data["visibility"],
             async_sync=data["async_sync"],
             nested_info=data["nested_info"],
+            kind=data["kind"],
+            method_kind=data["method_kind"],
+            bases=data["bases"],
         )
