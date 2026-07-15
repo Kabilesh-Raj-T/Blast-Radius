@@ -1,5 +1,7 @@
 """Engine API housing the core business logic for indexing, diff analysis, blast radius calculation, and test explaining."""
 
+from __future__ import annotations
+
 import os
 import sys
 from pathlib import Path
@@ -11,12 +13,19 @@ from blastradius.blast import compute_blast_radius
 from blastradius.diff import get_symbols_for_changed_lines, parse_git_diff
 from blastradius.graph import build_graph, build_reverse_graph
 from blastradius.indexer import index_repo
+from blastradius.plugins import load_plugin
 
 
-def index_repository(repo_path: str) -> dict[str, Any]:
+def index_repository(repo_path: str, framework: str | None = None) -> dict[str, Any]:
     """Index the repository and return summary metadata instead of full index to save tokens."""
     repo_p = Path(repo_path).resolve()
-    index = index_repo(str(repo_p))
+    plugin = load_plugin(framework)
+    exclude = ["venv", ".venv", "__pycache__"]
+    if plugin:
+        exclude = plugin.pre_index(exclude)
+    index = index_repo(str(repo_p), exclude=exclude)
+    if plugin:
+        plugin.post_index(index)
     return {
         "status": "success",
         "symbols_count": len(index.get("symbols", {})),
@@ -24,11 +33,19 @@ def index_repository(repo_path: str) -> dict[str, Any]:
     }
 
 
-def blast_radius(repo_path: str, target: str) -> list[dict[str, Any]]:
+def blast_radius(repo_path: str, target: str, framework: str | None = None) -> list[dict[str, Any]]:
     """Compute the blast radius of a symbol and return token-efficient results."""
     repo_p = Path(repo_path).resolve()
-    index = index_repo(str(repo_p))
+    plugin = load_plugin(framework)
+    exclude = ["venv", ".venv", "__pycache__"]
+    if plugin:
+        exclude = plugin.pre_index(exclude)
+    index = index_repo(str(repo_p), exclude=exclude)
+    if plugin:
+        plugin.post_index(index)
     G = build_graph(index)
+    if plugin:
+        plugin.post_graph(G)
     rev = build_reverse_graph(G)
     raw_results = compute_blast_radius(rev, target, root_dir=str(repo_p))
 
@@ -53,10 +70,16 @@ def blast_radius(repo_path: str, target: str) -> list[dict[str, Any]]:
     return compact_results
 
 
-def analyze_diff(repo_path: str, diff_content: str) -> dict[str, Any]:
+def analyze_diff(repo_path: str, diff_content: str, framework: str | None = None) -> dict[str, Any]:
     """Parse git diff, map to containing symbols, and compute collective blast radius."""
     repo_p = Path(repo_path).resolve()
-    index = index_repo(str(repo_p))
+    plugin = load_plugin(framework)
+    exclude = ["venv", ".venv", "__pycache__"]
+    if plugin:
+        exclude = plugin.pre_index(exclude)
+    index = index_repo(str(repo_p), exclude=exclude)
+    if plugin:
+        plugin.post_index(index)
     symbols = index.get("symbols", {})
 
     changed_lines = parse_git_diff(diff_content)
@@ -66,6 +89,8 @@ def analyze_diff(repo_path: str, diff_content: str) -> dict[str, Any]:
         return {"changed_symbols": [], "affected_tests": []}
 
     G = build_graph(index)
+    if plugin:
+        plugin.post_graph(G)
     rev = build_reverse_graph(G)
 
     # Collect affected tests from all changed symbols
@@ -96,11 +121,19 @@ def analyze_diff(repo_path: str, diff_content: str) -> dict[str, Any]:
     return {"changed_symbols": changed_symbols, "affected_tests": list(aggregated_results.values())}
 
 
-def explain_test(repo_path: str, test_name: str) -> dict[str, Any]:
+def explain_test(repo_path: str, test_name: str, framework: str | None = None) -> dict[str, Any]:
     """Explain dependency details of a test, returning its incoming calls/dependencies."""
     repo_p = Path(repo_path).resolve()
-    index = index_repo(str(repo_p))
+    plugin = load_plugin(framework)
+    exclude = ["venv", ".venv", "__pycache__"]
+    if plugin:
+        exclude = plugin.pre_index(exclude)
+    index = index_repo(str(repo_p), exclude=exclude)
+    if plugin:
+        plugin.post_index(index)
     G = build_graph(index)
+    if plugin:
+        plugin.post_graph(G)
 
     if test_name not in G:
         return {"error": f"Test {test_name} not found in dependency graph."}

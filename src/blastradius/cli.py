@@ -17,6 +17,9 @@ def analyze(
     format: str = typer.Option(
         "terminal", "--format", "-f", help="Output format (terminal, json, markdown)"
     ),
+    framework: str = typer.Option(
+        None, "--framework", help="Framework plugin to load (django, flask, requests)"
+    ),
     diagnostics: bool = typer.Option(False, "--diagnostics", "-d", help="Expose diagnostics"),
 ):
     """Analyze the blast radius of a symbol change and identify affected tests."""
@@ -25,8 +28,21 @@ def analyze(
         typer.echo(f"Error: Repository path {repo_path} does not exist.", err=True)
         raise typer.Exit(code=1)
 
-    index = index_repo(str(repo_path))
+    from blastradius.plugins import load_plugin
+
+    plugin = load_plugin(framework)
+    exclude = ["venv", ".venv", "__pycache__"]
+    if plugin:
+        exclude = plugin.pre_index(exclude)
+
+    index = index_repo(str(repo_path), exclude=exclude)
+    if plugin:
+        plugin.post_index(index)
+
     G = build_graph(index)
+    if plugin:
+        plugin.post_graph(G)
+
     rev = build_reverse_graph(G)
 
     results = compute_blast_radius(rev, target, root_dir=str(repo_path))
