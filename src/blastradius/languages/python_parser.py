@@ -13,6 +13,7 @@ from typing import Any, ClassVar
 
 import rich
 
+from blastradius.languages.base import LanguageParser
 from blastradius.symbol import Symbol
 
 # ---------------------------------------------------------------------------
@@ -512,7 +513,7 @@ class FileParser(ast.NodeVisitor):
 # ---------------------------------------------------------------------------
 
 
-class PythonParser:
+class PythonParser(LanguageParser):
     """Python language parser using the ``ast`` module.
 
     This is the original parser implementation, now wrapped to satisfy

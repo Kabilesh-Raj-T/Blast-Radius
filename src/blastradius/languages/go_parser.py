@@ -22,6 +22,7 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
+from blastradius.languages.base import LanguageParser
 from blastradius.symbol import Symbol
 
 # ---------------------------------------------------------------------------
@@ -95,15 +96,14 @@ def extract_struct_bases(source: str, start_pos: int) -> list[str]:
     return bases
 
 
-class GoParser:
+class GoParser(LanguageParser):
     """Go language parser using regex."""
 
     EXTENSIONS: ClassVar[frozenset[str]] = frozenset({".go"})
 
     def parse(self, filepath: str, repo_path: str) -> tuple[list[Symbol], dict[str, str]]:
-        try:
-            source = Path(filepath).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        source = self.read_file(filepath)
+        if source is None:
             return [], {}
 
         try:

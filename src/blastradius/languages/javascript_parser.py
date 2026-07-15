@@ -10,6 +10,7 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
+from blastradius.languages.base import LanguageParser
 from blastradius.symbol import Symbol
 
 # ---------------------------------------------------------------------------
@@ -110,15 +111,14 @@ def _resolve_import_path(source: str, current_file: str, repo_path: str) -> str:
     return source.replace("/", ".")
 
 
-class JavaScriptParser:
+class JavaScriptParser(LanguageParser):
     """JavaScript / JSX parser using regex and brace-depth scanning."""
 
     EXTENSIONS: ClassVar[frozenset[str]] = frozenset({".js", ".jsx", ".mjs", ".cjs"})
 
     def parse(self, filepath: str, repo_path: str) -> tuple[list[Symbol], dict[str, str]]:
-        try:
-            source = Path(filepath).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        source = self.read_file(filepath)
+        if source is None:
             return [], {}
 
         try:

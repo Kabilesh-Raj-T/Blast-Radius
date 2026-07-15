@@ -16,24 +16,21 @@ Usage::
 
 from __future__ import annotations
 
+import abc
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from blastradius.symbol import Symbol
 
 
-@runtime_checkable
-class LanguageParser(Protocol):
-    """Structural interface that every language parser must satisfy.
-
-    Implementors **must** declare :attr:`EXTENSIONS` as a class variable and
-    implement :meth:`parse`.  No base-class inheritance is required.
-    """
+class LanguageParser(abc.ABC):
+    """Abstract base class that every language parser must inherit from and implement."""
 
     #: Set of lowercase file extensions this parser handles, e.g. ``{".py"}``.
     EXTENSIONS: ClassVar[frozenset[str]]
 
+    @abc.abstractmethod
     def parse(
         self,
         filepath: str,
@@ -57,7 +54,19 @@ class LanguageParser(Protocol):
             ``{local_alias: fully_qualified_name}`` for every import in
             the file.
         """
-        ...
+        pass
+
+    def extract_symbols(self, filepath: str, repo_path: str) -> list["Symbol"]:
+        """Extract only the symbols from the file."""
+        symbols, _ = self.parse(filepath, repo_path)
+        return symbols
+
+    def read_file(self, filepath: str) -> str | None:
+        """Safely read source file content."""
+        try:
+            return Path(filepath).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            return None
 
 
 def find_end_line(source: str, start_index: int) -> int | None:

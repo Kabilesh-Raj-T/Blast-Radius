@@ -22,6 +22,7 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
+from blastradius.languages.base import LanguageParser
 from blastradius.symbol import Symbol
 
 # ---------------------------------------------------------------------------
@@ -71,15 +72,14 @@ def _module_from_path(filepath: str, repo_path: str) -> str:
     return ctx.filepath_to_module(filepath)
 
 
-class RustParser:
+class RustParser(LanguageParser):
     """Rust language parser using regex and impl-block tracking."""
 
     EXTENSIONS: ClassVar[frozenset[str]] = frozenset({".rs"})
 
     def parse(self, filepath: str, repo_path: str) -> tuple[list[Symbol], dict[str, str]]:
-        try:
-            source = Path(filepath).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        source = self.read_file(filepath)
+        if source is None:
             return [], {}
 
         try:

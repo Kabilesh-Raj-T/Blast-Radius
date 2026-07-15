@@ -22,6 +22,7 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
+from blastradius.languages.base import LanguageParser
 from blastradius.symbol import Symbol
 
 # ---------------------------------------------------------------------------
@@ -110,15 +111,14 @@ _RESERVED_JAVA = frozenset(
 )
 
 
-class JavaParser:
+class JavaParser(LanguageParser):
     """Java language parser using regex and brace-depth tracking."""
 
     EXTENSIONS: ClassVar[frozenset[str]] = frozenset({".java"})
 
     def parse(self, filepath: str, repo_path: str) -> tuple[list[Symbol], dict[str, str]]:
-        try:
-            source = Path(filepath).read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
+        source = self.read_file(filepath)
+        if source is None:
             return [], {}
 
         try:
