@@ -34,6 +34,7 @@ Hot path (subsequent runs)::
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -657,6 +658,16 @@ def update_graph(
 
     # ── Persist updated fingerprint cache ─────────────────────────────────
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(json.dumps(new_fingerprints, indent=2), encoding="utf-8")
+    tmp_path = cache_path.with_name(cache_path.name + f".{os.getpid()}.tmp")
+    try:
+        tmp_path.write_text(json.dumps(new_fingerprints, indent=2), encoding="utf-8")
+        os.replace(tmp_path, cache_path)
+    except Exception:
+        if tmp_path.exists():
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise
 
     return G, index, delta

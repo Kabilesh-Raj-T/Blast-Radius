@@ -569,3 +569,37 @@ class TestUpdateGraph:
         for v in G.nodes:
             for _, w, data in G.out_edges(v, data=True):
                 assert w in G, f"Dangling edge {v} -> {w} (after second update)"
+
+    def test_atomic_write_cache_failure(self, tmp_path):
+        """Simulate a failure during cache write and verify the old cache remains uncorrupted."""
+        import json
+        from unittest.mock import patch
+
+        from blastradius.incremental import update_graph
+
+        cache_file = tmp_path / ".blastradius" / "mtime_cache.json"
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Write initial uncorrupted cache content
+        initial_content = {"file_a.py": 12345.67}
+        cache_file.write_text(json.dumps(initial_content), encoding="utf-8")
+
+        # Modify a file to trigger an update_graph write
+        py = tmp_path / "app.py"
+        _write_py(py, "def x(): pass")
+
+        G = nx.MultiDiGraph()
+        G.add_node("repo", kind="repository", name="repo")
+        index: dict = {"symbols": {}, "imports": {}}
+
+        # Mock os.replace to raise OSError (simulating a crash/failure during atomic replacement)
+        with patch("os.replace", side_effect=OSError("Disk full/Write failure")):
+            try:
+                update_graph(G, index, str(tmp_path), fingerprint_cache_path=str(cache_file))
+            except OSError:
+                pass
+
+        # Assert that the cache file exists and still contains the initial uncorrupted content
+        assert cache_file.exists()
+        current_content = json.loads(cache_file.read_text(encoding="utf-8"))
+        assert current_content == initial_content

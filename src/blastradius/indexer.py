@@ -1,6 +1,7 @@
 """Indexer module for building dependency indexes."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -25,12 +26,25 @@ def load_index(path: str) -> dict[str, dict[str, Any]]:
         return {}
 
 
+def _save_atomic_json(data: Any, path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(path.name + f".{os.getpid()}.tmp")
+    try:
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+        os.replace(tmp_path, path)
+    except Exception:
+        if tmp_path.exists():
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise
+
+
 def save_index(index: dict[str, dict[str, Any]], path: str) -> None:
     """Save the index dictionary to a JSON file."""
-    p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(index, f, indent=2)
+    _save_atomic_json(index, Path(path))
 
 
 def _add_to_gitignore(repo_path: Path) -> None:
@@ -193,9 +207,7 @@ def index_repo(
 
     # Save outputs
     save_index(new_index, str(index_path))
-    blastradius_dir.mkdir(parents=True, exist_ok=True)
-    with open(cache_path, "w", encoding="utf-8") as f:
-        json.dump(current_cache, f, indent=2)
+    _save_atomic_json(current_cache, cache_path)
 
     _add_to_gitignore(repo_dir)
 
