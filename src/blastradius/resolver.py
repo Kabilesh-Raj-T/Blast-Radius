@@ -538,20 +538,43 @@ def resolve_call_with_certainty(
     symbols: dict[str, dict[str, Any]],
     local_types: dict[str, str] | None = None,
     caller_id: str | None = None,
+    _visited: set[tuple[str, str | None, str]] | None = None,
 ) -> tuple[list[str], float]:
+    if _visited is None:
+        _visited = set()
+
+    cycle_key = (caller_module, caller_class, call_name)
+    if cycle_key in _visited:
+        from blastradius.diagnostics import tracker
+
+        tracker.log_structured("circular_call_resolution_aborted")
+        return [], 0.60
+
+    _visited.add(cycle_key)
+
     lt_key = frozenset(local_types.items()) if local_types else None
     cache_key = (id(symbols), filepath, caller_module, caller_class, caller_id, call_name, lt_key)
     if cache_key in _resolve_call_cache:
+        _visited.remove(cycle_key)
         return _resolve_call_cache[cache_key]
 
     matches, certainty = _resolve_call_with_certainty_raw(
-        call_name, caller_module, caller_class, filepath, imports, symbols, local_types, caller_id
+        call_name,
+        caller_module,
+        caller_class,
+        filepath,
+        imports,
+        symbols,
+        local_types,
+        caller_id,
+        _visited,
     )
     resolved_matches = []
     for m in matches:
         resolved_matches.append(resolve_fqn_transitively_cached(m, symbols, imports, set()))
     res = (resolved_matches, certainty)
     _resolve_call_cache[cache_key] = res
+    _visited.remove(cycle_key)
     return res
 
 
@@ -564,6 +587,7 @@ def _resolve_call_with_certainty_raw(
     symbols: dict[str, dict[str, Any]],
     local_types: dict[str, str] | None = None,
     caller_id: str | None = None,
+    _visited: set[tuple[str, str | None, str]] | None = None,
 ) -> tuple[list[str], float]:
     """Like :func:`resolve_call` but also returns the resolution certainty.
 
@@ -613,6 +637,7 @@ def _resolve_call_with_certainty_raw(
             symbols,
             local_types,
             caller_id=caller_id,
+            _visited=_visited,
         )
         for class_fqn in resolved_classes:
             res = find_method_in_mro_all(class_fqn, method_name, symbols, imports, set())
@@ -648,7 +673,7 @@ def _resolve_call_with_certainty_raw(
                 super_matches = []
                 for base in bases:
                     base_classes, _ = resolve_call_with_certainty(
-                        base, caller_module, None, filepath, imports, symbols
+                        base, caller_module, None, filepath, imports, symbols, _visited=_visited
                     )
                     for base_fqn in base_classes:
                         res = find_method_in_mro_all(base_fqn, method_name, symbols, imports, set())

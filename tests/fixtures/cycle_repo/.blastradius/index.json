@@ -1,8 +1,93 @@
 {
-  "module_a.py:func_a": [
-    "func_b"
-  ],
-  "module_b.py:func_b": [
-    "func_a"
-  ]
+  "symbols": {
+    "module_a.func_a": {
+      "unique_id": "module_a.func_a",
+      "module": "module_a",
+      "filepath": "module_a.py",
+      "class_name": null,
+      "function_name": "func_a",
+      "decorators": [],
+      "line_no": 1,
+      "col_offset": 0,
+      "visibility": "public",
+      "async_sync": "sync",
+      "nested_info": null,
+      "kind": "function",
+      "method_kind": null,
+      "bases": null,
+      "calls": [
+        "func_b"
+      ],
+      "local_types": {},
+      "package": null,
+      "overload_info": null,
+      "generic_info": null,
+      "aliases": null,
+      "imported_names": null,
+      "exported_names": null,
+      "end_line_no": 5
+    },
+    "module_b.func_b": {
+      "unique_id": "module_b.func_b",
+      "module": "module_b",
+      "filepath": "module_b.py",
+      "class_name": null,
+      "function_name": "func_b",
+      "decorators": [],
+      "line_no": 1,
+      "col_offset": 0,
+      "visibility": "public",
+      "async_sync": "sync",
+      "nested_info": null,
+      "kind": "function",
+      "method_kind": null,
+      "bases": null,
+      "calls": [
+        "func_a"
+      ],
+      "local_types": {},
+      "package": null,
+      "overload_info": null,
+      "generic_info": null,
+      "aliases": null,
+      "imported_names": null,
+      "exported_names": null,
+      "end_line_no": 5
+    }
+  },
+  "imports": {
+    "module_a.py": {
+      "func_b": "module_b.func_b"
+    },
+    "module_b.py": {
+      "func_a": "module_a.func_a"
+    },
+    "__init__.py": {}
+  },
+  "modules": {
+    "module_a.py": {
+      "module": "module_a",
+      "package": "",
+      "filepath": "module_a.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\cycle_repo",
+      "is_package": false,
+      "is_namespace": false
+    },
+    "module_b.py": {
+      "module": "module_b",
+      "package": "",
+      "filepath": "module_b.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\cycle_repo",
+      "is_package": false,
+      "is_namespace": false
+    },
+    "__init__.py": {
+      "module": "root",
+      "package": "",
+      "filepath": "__init__.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\cycle_repo",
+      "is_package": true,
+      "is_namespace": false
+    }
+  }
 }

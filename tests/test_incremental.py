@@ -420,7 +420,7 @@ class TestPatchFile:
         assert G.has_edge("repo", mod_node)
 
     def test_rewires_calls_edges(self, tmp_path):
-        code = "def callee(): pass\n" "def caller():\n" "    callee()\n"
+        code = "def callee(): pass\ndef caller():\n    callee()\n"
         py = tmp_path / "cmod.py"
         _write_py(py, code)
         G = nx.MultiDiGraph()

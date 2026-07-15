@@ -115,3 +115,16 @@ def test_resolve_call_local_types():
     local_types = {"inv": "Invoice"}
     res = resolve_call("inv.save", "module", None, "file.py", imports, symbols, local_types)
     assert res == ["billing.invoice.Invoice.save"]
+
+
+def test_resolve_call_circular_dependency():
+    """Verify that circular dependencies in call resolution abort gracefully instead of causing stack overflow."""
+    imports = {"file.py": {}}
+    symbols = {
+        "module.A": {"kind": "class", "bases": ["B"]},
+        "module.B": {"kind": "class", "bases": ["A"]},
+    }
+    local_types = {"self": "A"}
+    # This should not hang/infinite-recurse and should return gracefully
+    res = resolve_call("self.foo", "module", "A", "file.py", imports, symbols, local_types)
+    assert isinstance(res, list)
