@@ -39,6 +39,7 @@ class Symbol:
     aliases: list[str] | None = None
     imported_names: list[str] | None = None
     exported_names: list[str] | None = None
+    end_line_no: int | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.unique_id, str) and not isinstance(self.unique_id, SymbolID):
@@ -76,4 +77,5 @@ class Symbol:
             aliases=data.get("aliases"),
             imported_names=data.get("imported_names"),
             exported_names=data.get("exported_names"),
+            end_line_no=data.get("end_line_no"),
         )

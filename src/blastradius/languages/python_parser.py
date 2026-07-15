@@ -367,6 +367,7 @@ class FileParser(ast.NodeVisitor):
                 bases=bases,
                 calls=None,
                 local_types=None,
+                end_line_no=getattr(node, "end_lineno", None),
             )
         )
 
@@ -491,6 +492,7 @@ class FileParser(ast.NodeVisitor):
                 bases=None,
                 calls=extractor.calls,
                 local_types=local_types,
+                end_line_no=getattr(node, "end_lineno", None),
             )
         )
 

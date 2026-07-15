@@ -18,40 +18,63 @@ def test_confidence_scoring_factors():
     """Verify that path state factors affect score, reason, and resolution explanation as expected."""
     # 1. Base case: 1-hop direct call, perfect certainty
     state = _PathState()
-    score, label, reason, legacy_exp, detail = _compute_weighted_confidence(1, state, "node", None)
+    score, label, explanation, reason, detail = _compute_weighted_confidence(1, state, "node", None)
     assert score == 1.0
     assert label == "HIGH"
     assert "direct invocation" in reason
+    assert "Direct invocation from the test node" in explanation
     assert "directly invoked" in detail
+    assert reason != explanation
+    assert reason != detail
+    assert explanation != detail
 
     # 2. Transitive depth penalty
     state = _PathState()
-    score, label, reason, legacy_exp, detail = _compute_weighted_confidence(3, state, "node", None)
+    score, label, explanation, reason, detail = _compute_weighted_confidence(3, state, "node", None)
     assert score == 0.81  # 0.90 ** (3 - 1)
     assert label == "MEDIUM"
     assert "3-hop depth" in reason
+    assert "Transitive path of depth 3" in explanation
     assert "depth penalty" in detail
+    assert reason != explanation
+    assert reason != detail
+    assert explanation != detail
 
     # 3. Dynamic dispatch
     state = _PathState(has_dynamic=True)
-    score, label, reason, legacy_exp, detail = _compute_weighted_confidence(1, state, "node", None)
+    score, label, explanation, reason, detail = _compute_weighted_confidence(1, state, "node", None)
     assert score == 0.40
     assert label == "LOW"
     assert "dynamic dispatch" in reason
+    assert "Direct invocation from the test node" in explanation
+    assert "dynamic call sites" in detail
+    assert reason != explanation
+    assert reason != detail
+    assert explanation != detail
 
     # 4. Class inheritance
     state = _PathState(has_inheritance=True)
-    score, label, reason, legacy_exp, detail = _compute_weighted_confidence(1, state, "node", None)
+    score, label, explanation, reason, detail = _compute_weighted_confidence(1, state, "node", None)
     assert score == 0.95
     assert label == "HIGH"
     assert "class inheritance" in reason
+    assert "Direct invocation" in explanation
+    assert "MRO traversal" in detail
+    assert reason != explanation
+    assert reason != detail
+    assert explanation != detail
 
     # 5. Ambiguity
     state = _PathState(has_ambiguity=True)
-    score, label, reason, legacy_exp, detail = _compute_weighted_confidence(1, state, "node", None)
+    score, label, explanation, reason, detail = _compute_weighted_confidence(1, state, "node", None)
     assert score == 0.60
     assert label == "MEDIUM"
     assert "ambiguous resolution" in reason
+    assert "Direct invocation" in explanation
+    assert "fallback" in detail
+    assert reason != explanation
+    assert reason != detail
+    assert explanation != detail
 
 
 def test_integration_confidence_attributes(tmp_path):
@@ -96,3 +119,33 @@ def test_method():
     assert hit.resolution_explanation != ""
     assert "class inheritance" in hit.reason
     assert "MRO traversal" in hit.resolution_explanation
+
+
+def test_formatter_output_narrative():
+    """Verify that formatting outputs include the expected confidence narrative and remain stable."""
+    from blastradius.blast import AffectedTest
+    from blastradius.formatters import format_json, format_markdown
+
+    hit = AffectedTest(
+        test_function="test_app.test_foo",
+        test_file="test_app.py",
+        chain=["app.foo", "test_app.test_foo"],
+        depth=1,
+        confidence="HIGH",
+        score=1.0,
+        explanation="Direct invocation from the test node (factors: direct invocation).",
+        reason="direct invocation",
+        resolution_explanation="The target is directly invoked by the test.",
+    )
+
+    results = [hit]
+
+    # Verify JSON output
+    json_out = format_json(results)
+    assert '"explanation": "The target is directly invoked by the test."' in json_out
+    assert '"reason": "direct invocation"' in json_out
+
+    # Verify Markdown output
+    md_out = format_markdown(results, "app.foo")
+    assert "- **Reason**: direct invocation" in md_out
+    assert "- **Explanation**: The target is directly invoked by the test." in md_out

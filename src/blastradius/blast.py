@@ -1,6 +1,5 @@
 """Blast radius calculation and analysis module."""
 
-from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -77,6 +76,9 @@ class _PathState:
 
     symbol_certainties: list[float] = field(default_factory=list)
     """Symbol resolution certainties (lexical, local, types) collected along the path."""
+
+    def __lt__(self, other: "_PathState") -> bool:
+        return False
 
 
 def _compute_weighted_confidence(
@@ -206,12 +208,30 @@ def _compute_weighted_confidence(
 
     reason_str = ", ".join(reasons) if reasons else "direct call"
     explanation_str = " ".join(explanations)
-    return score, label, reason_str, reason_str, explanation_str
+
+    if depth == 1:
+        path_summary = f"Direct invocation from the test node (factors: {reason_str})."
+    else:
+        path_summary = f"Transitive path of depth {depth} (factors: {reason_str})."
+
+    return score, label, path_summary, reason_str, explanation_str
 
 
 # ---------------------------------------------------------------------------
 # Blast radius BFS
 # ---------------------------------------------------------------------------
+
+
+def _get_node_properties(node: str, reverse_graph: nx.DiGraph) -> tuple[bool, bool, int]:
+    node_data = reverse_graph.nodes[node] if node in reverse_graph.nodes else {}
+    has_dynamic = node_data.get("kind") == "dynamic_call"
+    has_decorated = bool(node_data.get("decorators"))
+    calls_in = sum(
+        1
+        for _, _, d in reverse_graph.in_edges(node, data=True)
+        if d.get("relation") == "CALLS" or d.get("relation") is None
+    )
+    return has_dynamic, has_decorated, calls_in
 
 
 def compute_blast_radius(
@@ -247,15 +267,37 @@ def compute_blast_radius(
     config = DiscoveryConfig(root_dir)
     engine = DiscoveryEngine(config)
 
-    affected: list[AffectedTest] = []
+    import heapq
+
     visited: set[str] = set()
+    best_score: dict[str, float] = {}
 
-    # Queue entries: (node, chain, depth, path_state)
-    queue: deque[tuple[str, list[str], int, _PathState]] = deque()
-    queue.append((target, [target], 0, _PathState()))
+    # Initialize path state for target
+    t_dynamic, t_decorated, t_fan_out = _get_node_properties(target, reverse_graph)
+    initial_state = _PathState(
+        has_dynamic=t_dynamic,
+        min_certainty=1.0,
+        max_fan_out=t_fan_out,
+        has_decorated_hop=t_decorated,
+        min_edge_certainty=1.0,
+        has_inheritance=False,
+        has_ambiguity=False,
+        import_certainties=[],
+        symbol_certainties=[],
+    )
 
-    while queue:
-        node, chain, depth, state = queue.popleft()
+    best_score[target] = 1.0
+
+    # Heap entries: (neg_score, depth, node, chain, state)
+    heap: list[tuple[float, int, str, tuple[str, ...], _PathState]] = []
+    heapq.heappush(heap, (-1.0, 0, target, (target,), initial_state))
+
+    affected_map: dict[str, AffectedTest] = {}
+
+    while heap:
+        neg_score, depth, node, chain_tuple, state = heapq.heappop(heap)
+        chain = list(chain_tuple)
+        score = -neg_score
 
         if node in visited:
             continue
@@ -264,54 +306,26 @@ def compute_blast_radius(
         if depth > max_depth:
             continue
 
-        # ── Update path state with current node's properties ──────────
         node_data = reverse_graph.nodes[node] if node in reverse_graph.nodes else {}
-
-        new_has_dynamic = state.has_dynamic
-        if node_data.get("kind") == "dynamic_call":
-            new_has_dynamic = True
-
-        new_has_decorated = state.has_decorated_hop
-        if node_data.get("decorators"):
-            new_has_decorated = True
-
-        # Fan-out: how many distinct CALLS targets does this node have?
-        calls_in = sum(
-            1
-            for _, _, d in reverse_graph.in_edges(node, data=True)
-            if d.get("relation") == "CALLS" or d.get("relation") is None
-        )
-        new_max_fan_out = max(state.max_fan_out, calls_in)
-
-        current_state = _PathState(
-            has_dynamic=new_has_dynamic,
-            min_certainty=state.min_certainty,
-            max_fan_out=new_max_fan_out,
-            has_decorated_hop=new_has_decorated,
-            min_edge_certainty=state.min_edge_certainty,
-            has_inheritance=state.has_inheritance,
-            has_ambiguity=state.has_ambiguity,
-            import_certainties=state.import_certainties.copy(),
-            symbol_certainties=state.symbol_certainties.copy(),
-        )
 
         # ── Test hit ─────────────────────────────────────────────────
         if engine.is_test_node(node, node_data) and node != target:
-            if ":" in node:
-                filepath, _ = node.rsplit(":", 1)
-            else:
-                nd = reverse_graph.nodes[node]
-                filepath = nd.get("filepath", "") if nd else ""
+            if node not in affected_map:
+                if ":" in node:
+                    filepath, _ = node.rsplit(":", 1)
+                else:
+                    nd = reverse_graph.nodes[node]
+                    filepath = nd.get("filepath", "") if nd else ""
 
-            score, label, explanation, reason, res_explanation = _compute_weighted_confidence(
-                depth=depth,
-                state=current_state,
-                node=node,
-                reverse_graph=reverse_graph,
-            )
+                # Compute the final values for this test hit
+                score, label, explanation, reason, res_explanation = _compute_weighted_confidence(
+                    depth=depth,
+                    state=state,
+                    node=node,
+                    reverse_graph=reverse_graph,
+                )
 
-            affected.append(
-                AffectedTest(
+                affected_map[node] = AffectedTest(
                     test_function=node,
                     test_file=filepath,
                     chain=chain,
@@ -322,7 +336,6 @@ def compute_blast_radius(
                     reason=reason,
                     resolution_explanation=res_explanation,
                 )
-            )
             # Do not traverse past test functions
             continue
 
@@ -364,19 +377,35 @@ def compute_blast_radius(
                 elif edge_certainty in (0.98, 0.95, 0.90, 0.85):
                     new_symbol_certs.append(edge_certainty)
 
+                s_dynamic, s_decorated, s_fan_out = _get_node_properties(successor, reverse_graph)
+
                 new_state = _PathState(
-                    has_dynamic=new_has_dynamic,
+                    has_dynamic=state.has_dynamic or s_dynamic,
                     min_certainty=min(state.min_certainty, edge_certainty),
-                    max_fan_out=new_max_fan_out,
-                    has_decorated_hop=new_has_decorated,
+                    max_fan_out=max(state.max_fan_out, s_fan_out),
+                    has_decorated_hop=state.has_decorated_hop or s_decorated,
                     min_edge_certainty=min(state.min_edge_certainty, edge_certainty),
                     has_inheritance=state.has_inheritance or edge_is_inheritance,
                     has_ambiguity=state.has_ambiguity or (edge_certainty == 0.60),
                     import_certainties=new_import_certs,
                     symbol_certainties=new_symbol_certs,
                 )
-                queue.append((successor, chain + [successor], depth + 1, new_state))
+
+                # Compute the potential score of the path ending at successor
+                suc_score, _, _, _, _ = _compute_weighted_confidence(
+                    depth=depth + 1,
+                    state=new_state,
+                    node=successor,
+                    reverse_graph=reverse_graph,
+                )
+
+                if suc_score >= best_score.get(successor, 0.0):
+                    best_score[successor] = suc_score
+                    heapq.heappush(
+                        heap,
+                        (-suc_score, depth + 1, successor, chain_tuple + (successor,), new_state),
+                    )
 
     tracker.query_time = time.perf_counter() - start_time
     tracker.log_structured("blast_radius_queried")
-    return affected
+    return sorted(affected_map.values(), key=lambda x: (-x.score, x.test_function))

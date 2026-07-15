@@ -487,6 +487,10 @@ def invalidate_file(
     index["imports"].pop(rel_filepath, None)
     index.setdefault("modules", {}).pop(rel_filepath, None)
 
+    from blastradius.resolver import invalidate_caches
+
+    invalidate_caches()
+
     # Clean up hierarchy nodes that became childless
     orphans = _prune_orphan_hierarchy_nodes(G)
 
@@ -543,6 +547,10 @@ def patch_file(
     index["imports"][rel_filepath] = import_map
     ctx = get_repository_context(str(repo_dir))
     index.setdefault("modules", {})[rel_filepath] = ctx.module_metadata(str(abs_filepath))
+
+    from blastradius.resolver import invalidate_caches
+
+    invalidate_caches()
 
     # Rebuild hierarchy edges (OWNS)
     _add_hierarchy_edges(G, symbols)

@@ -6,6 +6,16 @@ from typing import Any
 _cache: dict[int, dict[str, list[str]]] = {}
 
 
+def invalidate_caches() -> None:
+    """Clear all resolver caches."""
+    _cache.clear()
+    _module_symbols_cache.clear()
+    _module_to_file_cache.clear()
+    _c3_mro_cache.clear()
+    _resolve_call_cache.clear()
+    _name_to_symbols_cache.clear()
+
+
 def _legacy_module_from_filepath(filepath: str) -> str:
     p = Path(filepath.replace("\\", "/"))
     if p.name == "__init__.py":

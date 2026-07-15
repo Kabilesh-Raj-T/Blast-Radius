@@ -6,6 +6,7 @@ from typing import Any
 
 from blastradius.context import get_repository_context
 from blastradius.languages import registry
+from blastradius.resolver import invalidate_caches
 
 
 def load_index(path: str) -> dict[str, dict[str, Any]]:
@@ -13,6 +14,7 @@ def load_index(path: str) -> dict[str, dict[str, Any]]:
 
     Returns an empty dict if the file does not exist.
     """
+    invalidate_caches()
     p = Path(path)
     if not p.exists():
         return {}
@@ -216,6 +218,7 @@ def index_repo(
     tracker.index_time = time.perf_counter() - start_time
     tracker.log_structured("repo_indexing_completed")
 
+    invalidate_caches()
     return new_index
 
 
@@ -283,4 +286,5 @@ def update_index(
     # Persist updated index
     save_index(index, str(index_path))
 
+    invalidate_caches()
     return G, index, delta

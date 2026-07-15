@@ -60,6 +60,80 @@ class LanguageParser(Protocol):
         ...
 
 
+def find_end_line(source: str, start_index: int) -> int | None:
+    # Find the first '{' after start_index
+    open_brace_idx = source.find("{", start_index)
+    if open_brace_idx == -1:
+        return None
+
+    depth = 0
+    in_string = None
+    escaped = False
+    in_line_comment = False
+    in_block_comment = False
+
+    idx = open_brace_idx
+    n = len(source)
+    while idx < n:
+        char = source[idx]
+
+        if in_line_comment:
+            if char == "\n":
+                in_line_comment = False
+            idx += 1
+            continue
+
+        if in_block_comment:
+            if char == "*" and idx + 1 < n and source[idx + 1] == "/":
+                in_block_comment = False
+                idx += 2
+            else:
+                idx += 1
+            continue
+
+        if escaped:
+            escaped = False
+            idx += 1
+            continue
+
+        if char == "\\":
+            escaped = True
+            idx += 1
+            continue
+
+        if in_string:
+            if char == in_string:
+                in_string = None
+            idx += 1
+            continue
+
+        # Check for comments start
+        if char == "/" and idx + 1 < n:
+            if source[idx + 1] == "/":
+                in_line_comment = True
+                idx += 2
+                continue
+            elif source[idx + 1] == "*":
+                in_block_comment = True
+                idx += 2
+                continue
+
+        if char in ('"', "'", "`"):
+            in_string = char
+            idx += 1
+            continue
+
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return source[:idx].count("\n") + 1
+        idx += 1
+
+    return None
+
+
 class ParserRegistry:
     """Maps file extensions to :class:`LanguageParser` instances.
 
@@ -121,4 +195,30 @@ class ParserRegistry:
         parser = self.get(filepath)
         if parser is None:
             return [], {}
-        return parser.parse(filepath, repo_path)
+        symbols, import_map = parser.parse(filepath, repo_path)
+
+        # Post-process symbols to compute end_line_no for brace-based languages
+        ext = Path(filepath).suffix.lower()
+        if ext in (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".go", ".java", ".rs"):
+            try:
+                source = Path(filepath).read_text(encoding="utf-8")
+                # Pre-calculate line offsets for O(1) character index lookup
+                lines = source.splitlines(keepends=True)
+                line_offsets = [0]
+                total = 0
+                for line in lines:
+                    total += len(line)
+                    line_offsets.append(total)
+
+                for sym in symbols:
+                    if getattr(sym, "end_line_no", None) is None:
+                        start_line = sym.line_no
+                        if start_line <= len(line_offsets):
+                            start_idx = line_offsets[start_line - 1]
+                            end_line = find_end_line(source, start_idx)
+                            if end_line is not None:
+                                sym.end_line_no = end_line
+            except Exception:
+                pass
+
+        return symbols, import_map

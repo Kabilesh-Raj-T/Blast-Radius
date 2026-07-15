@@ -68,10 +68,17 @@ def get_symbols_for_changed_lines(
         for line in lines:
             best_sym = None
             for sym in file_symbols:
-                if sym.get("line_no", 0) <= line:
-                    best_sym = sym
+                start = sym.get("line_no", 0)
+                end = sym.get("end_line_no")
+                if end is not None:
+                    if start <= line <= end:
+                        best_sym = sym
+                        break
                 else:
-                    break
+                    if start <= line:
+                        best_sym = sym
+                    else:
+                        break
             if best_sym and best_sym["unique_id"] not in affected_symbols:
                 affected_symbols.append(best_sym["unique_id"])
 
