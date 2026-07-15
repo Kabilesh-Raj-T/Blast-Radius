@@ -1,8 +1,8 @@
 """Unit and integration tests for advanced call resolution (MRO, super, ambiguity, class/staticmethod)."""
 
-from blastradius.graph import build_graph
-from blastradius.parser import parse_file
-from blastradius.resolver import resolve_call_with_certainty
+from blastradius.graph.graph import build_graph
+from blastradius.parsing import parse_file
+from blastradius.resolution.resolver import resolve_call_with_certainty
 
 
 def test_self_and_cls_mro_inheritance():

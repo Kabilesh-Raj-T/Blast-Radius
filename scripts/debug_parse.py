@@ -4,7 +4,7 @@
 from pathlib import Path
 
 import rich
-from blastradius.parser import parse_file
+from blastradius.parsing import parse_file
 
 
 def main():

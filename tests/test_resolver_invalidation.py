@@ -1,7 +1,7 @@
 import os
 import time
 
-from blastradius.resolver import invalidate_caches, resolve, resolve_call
+from blastradius.resolution.resolver import invalidate_caches, resolve, resolve_call
 
 
 def test_resolve_cache_invalidation():
@@ -83,8 +83,8 @@ def test_incremental_update_path_invalidation(tmp_path):
     file_b.write_text("from a import foo\ndef bar():\n    foo()\n", encoding="utf-8")
 
     # Initial indexing
-    from blastradius.graph import build_graph
-    from blastradius.indexer import index_repo, update_index
+    from blastradius.graph.graph import build_graph
+    from blastradius.indexing.indexer import index_repo, update_index
 
     # Exclude typical folders and specify test index_dir
     index_dir = str(repo_dir / ".blastradius")

@@ -1,4 +1,4 @@
-from blastradius.resolver import resolve, resolve_call
+from blastradius.resolution.resolver import resolve, resolve_call
 
 
 def test_resolve_single_match():

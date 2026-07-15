@@ -2,10 +2,10 @@ from pathlib import Path
 
 import typer
 
-from blastradius.blast import compute_blast_radius
-from blastradius.formatters import format_json, format_markdown, format_terminal
-from blastradius.graph import build_graph, build_reverse_graph
-from blastradius.indexer import index_repo
+from blastradius.analysis.blast import compute_blast_radius
+from blastradius.graph.graph import build_graph, build_reverse_graph
+from blastradius.indexing.indexer import index_repo
+from blastradius.output.formatters import format_json, format_markdown, format_terminal
 
 app = typer.Typer(help="Blast Radius CLI")
 
@@ -58,7 +58,7 @@ def analyze(
         from rich.console import Console
         from rich.table import Table
 
-        from blastradius.diagnostics import tracker
+        from blastradius.core.diagnostics import tracker
 
         console = Console()
         table = Table(title="BlastRadius Diagnostics", border_style="bold blue")

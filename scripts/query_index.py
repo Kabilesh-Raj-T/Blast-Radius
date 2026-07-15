@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 import rich
-from blastradius.resolver import resolve
+from blastradius.resolution.resolver import resolve
 
 
 def main():

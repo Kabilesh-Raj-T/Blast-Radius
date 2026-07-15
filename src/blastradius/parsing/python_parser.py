@@ -2,7 +2,7 @@
 
 This module re-uses all the logic from the original ``parser.py`` and
 exposes it through the :class:`LanguageParser` Protocol so it can be
-registered in :class:`~blastradius.languages.base.ParserRegistry`.
+registered in :class:`~blastradius.parsing.base.ParserRegistry`.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import Any, ClassVar
 
 import rich
 
-from blastradius.languages.base import LanguageParser
-from blastradius.symbol import Symbol
+from blastradius.core.symbol import Symbol
+from blastradius.parsing.base import LanguageParser
 
 # ---------------------------------------------------------------------------
 # Helpers (unchanged from original parser.py)
@@ -23,7 +23,7 @@ from blastradius.symbol import Symbol
 
 def filepath_to_module(filepath: str, repo_path: str) -> str:
     """Convert a filepath to a Python module name relative to repo_path using RepositoryContext."""
-    from blastradius.context import get_repository_context
+    from blastradius.core.context import get_repository_context
 
     ctx = get_repository_context(repo_path)
     return ctx.filepath_to_module(filepath)
@@ -517,7 +517,7 @@ class PythonParser(LanguageParser):
     """Python language parser using the ``ast`` module.
 
     This is the original parser implementation, now wrapped to satisfy
-    the :class:`~blastradius.languages.base.LanguageParser` Protocol.
+    the :class:`~blastradius.parsing.base.LanguageParser` Protocol.
     """
 
     EXTENSIONS: ClassVar[frozenset[str]] = frozenset({".py"})

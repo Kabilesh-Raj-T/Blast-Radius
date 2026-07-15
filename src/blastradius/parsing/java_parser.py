@@ -22,8 +22,8 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from blastradius.languages.base import LanguageParser
-from blastradius.symbol import Symbol
+from blastradius.core.symbol import Symbol
+from blastradius.parsing.base import LanguageParser
 
 # ---------------------------------------------------------------------------
 # Regex patterns

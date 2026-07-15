@@ -1,17 +1,16 @@
 """Language parsers package.
 
 Instantiates all built-in language parsers, registers them in a shared
-:class:`~blastradius.languages.base.ParserRegistry` singleton, and
-re-exports a drop-in ``parse_file`` function with the same signature as
-the original ``blastradius.parser.parse_file``.
+:class:`~blastradius.parsing.base.ParserRegistry` singleton, and
+re-exports a drop-in ``parse_file`` function.
 
 Adding a new language
 ---------------------
-1. Create ``blastradius/languages/my_lang_parser.py`` with a class that
+1. Create ``blastradius/parsing/my_lang_parser.py`` with a class that
    has ``EXTENSIONS: ClassVar[frozenset[str]]`` and a ``parse()`` method.
 2. Import and register it here::
 
-       from blastradius.languages.my_lang_parser import MyLangParser
+       from blastradius.parsing.my_lang_parser import MyLangParser
        registry.register(MyLangParser())
 
 No other files need to change.
@@ -19,13 +18,13 @@ No other files need to change.
 
 from __future__ import annotations
 
-from blastradius.languages.base import ParserRegistry
-from blastradius.languages.go_parser import GoParser
-from blastradius.languages.java_parser import JavaParser
-from blastradius.languages.javascript_parser import JavaScriptParser
-from blastradius.languages.python_parser import PythonParser
-from blastradius.languages.rust_parser import RustParser
-from blastradius.languages.typescript_parser import TypeScriptParser
+from blastradius.parsing.base import ParserRegistry
+from blastradius.parsing.go_parser import GoParser
+from blastradius.parsing.java_parser import JavaParser
+from blastradius.parsing.javascript_parser import JavaScriptParser
+from blastradius.parsing.python_parser import PythonParser
+from blastradius.parsing.rust_parser import RustParser
+from blastradius.parsing.typescript_parser import TypeScriptParser
 
 # ---------------------------------------------------------------------------
 # Singleton registry — shared across the whole pipeline

@@ -7,11 +7,11 @@ from io import StringIO
 from pathlib import Path
 
 import pytest
-from blastradius.blast import compute_blast_radius
-from blastradius.diagnostics import tracker
-from blastradius.graph import build_graph, build_reverse_graph
-from blastradius.indexer import index_repo
-from blastradius.mcp_server import main as mcp_main
+from blastradius.analysis.blast import compute_blast_radius
+from blastradius.core.diagnostics import tracker
+from blastradius.graph.graph import build_graph, build_reverse_graph
+from blastradius.indexing.indexer import index_repo
+from blastradius.output.mcp_server import main as mcp_main
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:

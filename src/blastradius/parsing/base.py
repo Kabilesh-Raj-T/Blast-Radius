@@ -5,8 +5,8 @@ Protocol — a structural interface (no inheritance required).
 
 Usage::
 
-    from blastradius.languages.base import ParserRegistry
-    from blastradius.languages.python_parser import PythonParser
+    from blastradius.parsing.base import ParserRegistry
+    from blastradius.parsing.python_parser import PythonParser
 
     registry = ParserRegistry()
     registry.register(PythonParser())
@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
-    from blastradius.symbol import Symbol
+    from blastradius.core.symbol import Symbol
 
 
 class LanguageParser(abc.ABC):
@@ -146,12 +146,12 @@ def find_end_line(source: str, start_index: int) -> int | None:
 class ParserRegistry:
     """Maps file extensions to :class:`LanguageParser` instances.
 
-    A single registry is instantiated in :mod:`blastradius.languages` and
+    A single registry is instantiated in :mod:`blastradius.parsing` and
     shared across the whole pipeline.
 
     Example::
 
-        from blastradius.languages import registry
+        from blastradius.parsing import registry
 
         symbols, imports = registry.parse_file("main.go", "/my/repo")
     """

@@ -5,9 +5,9 @@ import os
 from pathlib import Path
 from typing import Any
 
-from blastradius.context import get_repository_context
-from blastradius.languages import registry
-from blastradius.resolver import invalidate_caches
+from blastradius.core.context import get_repository_context
+from blastradius.parsing import registry
+from blastradius.resolution.resolver import invalidate_caches
 
 
 def load_index(path: str) -> dict[str, dict[str, Any]]:
@@ -76,7 +76,7 @@ def index_repo(
     """
     import time
 
-    from blastradius.diagnostics import tracker
+    from blastradius.core.diagnostics import tracker
 
     start_time = time.perf_counter()
 
@@ -270,7 +270,7 @@ def update_index(
         A :class:`~blastradius.incremental.GraphDelta` describing every
         node / edge that was added or removed.
     """
-    from blastradius.incremental import update_graph
+    from blastradius.indexing.incremental import update_graph
 
     repo_dir = Path(repo_path).resolve()
 

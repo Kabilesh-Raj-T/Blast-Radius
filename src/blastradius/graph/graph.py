@@ -6,7 +6,7 @@ from typing import Any
 
 import networkx as nx
 
-from blastradius.resolver import (
+from blastradius.resolution.resolver import (
     resolve_call,
     resolve_call_with_certainty,
     resolve_imports_transitively,
@@ -23,7 +23,7 @@ def build_graph(index: dict[str, Any]) -> nx.MultiDiGraph:
     IMPLEMENTS).
     """
     G = nx.MultiDiGraph()
-    from blastradius.symbol import SymbolID
+    from blastradius.core.symbol import SymbolID
 
     symbols = index.get("symbols", {})
     imports = index.get("imports", {})
@@ -112,7 +112,7 @@ def add_edges_for_symbols(
     imports:
         The complete import map keyed by relative file path.
     """
-    from blastradius.symbol import SymbolID
+    from blastradius.core.symbol import SymbolID
 
     # --- Pre-built indexes to eliminate O(n²) inner loops ---
 
@@ -254,7 +254,7 @@ def add_edges_for_symbols(
                         G.add_edge(mod_id, SymbolID(imported_target), relation="IMPORTS")
 
     # Track diagnostics
-    from blastradius.diagnostics import tracker
+    from blastradius.core.diagnostics import tracker
 
     tracker.resolved_imports = sum(
         1 for _, _, d in G.edges(data=True) if d.get("relation") == "IMPORTS"
@@ -297,7 +297,7 @@ def load(path: str) -> nx.MultiDiGraph:
         data = json.loads(p.read_text(encoding="utf-8"))
         string_G = nx.node_link_graph(data)
         # Convert string node keys back to SymbolID instances
-        from blastradius.symbol import SymbolID
+        from blastradius.core.symbol import SymbolID
 
         G = nx.MultiDiGraph()
         for node, data in string_G.nodes(data=True):

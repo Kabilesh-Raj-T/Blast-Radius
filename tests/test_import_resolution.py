@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from blastradius.graph import build_graph
-from blastradius.indexer import index_repo
+from blastradius.graph.graph import build_graph
+from blastradius.indexing.indexer import index_repo
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:
@@ -234,7 +234,7 @@ def test_pythonpath_import_root_detection(tmp_path, monkeypatch):
     _create_file(tmp_path, "custom_root/pkg/mod.py", "def helper(): pass\n")
     monkeypatch.setenv("PYTHONPATH", str(tmp_path / "custom_root"))
 
-    from blastradius.context import RepositoryContext
+    from blastradius.core.context import RepositoryContext
 
     ctx = RepositoryContext(str(tmp_path))
     assert ctx.filepath_to_module(str(tmp_path / "custom_root/pkg/mod.py")) == "pkg.mod"
@@ -245,7 +245,7 @@ def test_editable_install_root_detection(tmp_path):
     _create_file(tmp_path, "site-packages/project.pth", "../editable_src\n")
     _create_file(tmp_path, "editable_src/editpkg/mod.py", "def helper(): pass\n")
 
-    from blastradius.context import RepositoryContext
+    from blastradius.core.context import RepositoryContext
 
     ctx = RepositoryContext(str(tmp_path))
     assert ctx.filepath_to_module(str(tmp_path / "editable_src/editpkg/mod.py")) == "editpkg.mod"

@@ -1,12 +1,157 @@
 {
-  "billing/invoice.py:generate_invoice": [
-    "parse_date",
-    "strftime"
-  ],
-  "tests/test_billing.py:test_generate_invoice": [
-    "generate_invoice"
-  ],
-  "utils/parser.py:parse_date": [
-    "strptime"
-  ]
+  "symbols": {
+    "billing.invoice.generate_invoice": {
+      "unique_id": "billing.invoice.generate_invoice",
+      "module": "billing.invoice",
+      "filepath": "billing/invoice.py",
+      "class_name": null,
+      "function_name": "generate_invoice",
+      "decorators": [],
+      "line_no": 4,
+      "col_offset": 0,
+      "visibility": "public",
+      "async_sync": "sync",
+      "nested_info": null,
+      "kind": "function",
+      "method_kind": null,
+      "bases": null,
+      "calls": [
+        "parse_date",
+        "parsed_date.strftime"
+      ],
+      "local_types": {
+        "date_str": "str",
+        "parsed_date": "parse_date"
+      },
+      "package": null,
+      "overload_info": null,
+      "generic_info": null,
+      "aliases": null,
+      "imported_names": null,
+      "exported_names": null,
+      "end_line_no": 7
+    },
+    "tests.test_billing.test_generate_invoice": {
+      "unique_id": "tests.test_billing.test_generate_invoice",
+      "module": "tests.test_billing",
+      "filepath": "tests/test_billing.py",
+      "class_name": null,
+      "function_name": "test_generate_invoice",
+      "decorators": [],
+      "line_no": 4,
+      "col_offset": 0,
+      "visibility": "public",
+      "async_sync": "sync",
+      "nested_info": null,
+      "kind": "function",
+      "method_kind": null,
+      "bases": null,
+      "calls": [
+        "generate_invoice"
+      ],
+      "local_types": {
+        "result": "generate_invoice"
+      },
+      "package": null,
+      "overload_info": null,
+      "generic_info": null,
+      "aliases": null,
+      "imported_names": null,
+      "exported_names": null,
+      "end_line_no": 7
+    },
+    "utils.parser.parse_date": {
+      "unique_id": "utils.parser.parse_date",
+      "module": "utils.parser",
+      "filepath": "utils/parser.py",
+      "class_name": null,
+      "function_name": "parse_date",
+      "decorators": [],
+      "line_no": 4,
+      "col_offset": 0,
+      "visibility": "public",
+      "async_sync": "sync",
+      "nested_info": null,
+      "kind": "function",
+      "method_kind": null,
+      "bases": null,
+      "calls": [
+        "datetime.strptime"
+      ],
+      "local_types": {
+        "date_str": "str"
+      },
+      "package": null,
+      "overload_info": null,
+      "generic_info": null,
+      "aliases": null,
+      "imported_names": null,
+      "exported_names": null,
+      "end_line_no": 6
+    }
+  },
+  "imports": {
+    "billing/invoice.py": {
+      "parse_date": "utils.parser.parse_date"
+    },
+    "billing/__init__.py": {},
+    "tests/test_billing.py": {
+      "generate_invoice": "billing.invoice.generate_invoice"
+    },
+    "tests/__init__.py": {},
+    "utils/parser.py": {
+      "datetime": "datetime.datetime"
+    },
+    "utils/__init__.py": {}
+  },
+  "modules": {
+    "billing/invoice.py": {
+      "module": "billing.invoice",
+      "package": "billing",
+      "filepath": "billing/invoice.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\simple_repo",
+      "is_package": false,
+      "is_namespace": false
+    },
+    "billing/__init__.py": {
+      "module": "billing",
+      "package": "billing",
+      "filepath": "billing/__init__.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\simple_repo",
+      "is_package": true,
+      "is_namespace": false
+    },
+    "tests/test_billing.py": {
+      "module": "tests.test_billing",
+      "package": "tests",
+      "filepath": "tests/test_billing.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\simple_repo",
+      "is_package": false,
+      "is_namespace": false
+    },
+    "tests/__init__.py": {
+      "module": "tests",
+      "package": "tests",
+      "filepath": "tests/__init__.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\simple_repo",
+      "is_package": true,
+      "is_namespace": false
+    },
+    "utils/parser.py": {
+      "module": "utils.parser",
+      "package": "utils",
+      "filepath": "utils/parser.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\simple_repo",
+      "is_package": false,
+      "is_namespace": false
+    },
+    "utils/__init__.py": {
+      "module": "utils",
+      "package": "utils",
+      "filepath": "utils/__init__.py",
+      "import_root": "D:\\Blast Radius\\tests\\fixtures\\simple_repo",
+      "is_package": true,
+      "is_namespace": false
+    }
+  }
 }

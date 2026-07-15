@@ -1,6 +1,6 @@
 """Unit and integration tests for C3 Linearization MRO, mixins, ABCs, and overridden/inherited method resolution."""
 
-from blastradius.resolver import get_c3_mro, resolve_call_with_certainty
+from blastradius.resolution.resolver import get_c3_mro, resolve_call_with_certainty
 
 
 def test_diamond_inheritance_c3():

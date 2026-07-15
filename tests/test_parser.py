@@ -1,5 +1,5 @@
-from blastradius.parser import parse_file
-from blastradius.symbol import Symbol
+from blastradius.core.symbol import Symbol
+from blastradius.parsing import parse_file
 
 
 def _write_and_parse(tmp_path, code: str) -> list[Symbol]:

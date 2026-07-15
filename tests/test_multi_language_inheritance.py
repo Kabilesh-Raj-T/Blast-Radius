@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from blastradius.graph import build_graph
-from blastradius.languages.go_parser import GoParser
-from blastradius.languages.java_parser import JavaParser
-from blastradius.languages.typescript_parser import TypeScriptParser
+from blastradius.graph.graph import build_graph
+from blastradius.parsing.go_parser import GoParser
+from blastradius.parsing.java_parser import JavaParser
+from blastradius.parsing.typescript_parser import TypeScriptParser
 
 
 def _write_file(tmp_path: Path, rel_path: str, content: str) -> Path:

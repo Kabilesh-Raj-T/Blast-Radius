@@ -549,7 +549,7 @@ def resolve_call_with_certainty(
 
     cycle_key = (caller_module, caller_class, call_name)
     if cycle_key in _visited:
-        from blastradius.diagnostics import tracker
+        from blastradius.core.diagnostics import tracker
 
         tracker.log_structured("circular_call_resolution_aborted")
         return [], 0.60

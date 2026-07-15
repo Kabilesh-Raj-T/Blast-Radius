@@ -124,3 +124,9 @@ cython_debug/
 .idea/
 *.swp
 *.swo
+
+# Project benchmarks and scratch files
+/benchmarks/
+/scratch_simple_repo/
+/scratch_test/
+/scratch_test_conf/

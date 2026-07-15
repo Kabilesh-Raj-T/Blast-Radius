@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 import networkx as nx
-from blastradius.incremental import (
+from blastradius.indexing.incremental import (
     GraphDelta,
     _prune_orphan_hierarchy_nodes,
     compute_file_fingerprints,
@@ -575,7 +575,7 @@ class TestUpdateGraph:
         import json
         from unittest.mock import patch
 
-        from blastradius.incremental import update_graph
+        from blastradius.indexing.incremental import update_graph
 
         cache_file = tmp_path / ".blastradius" / "mtime_cache.json"
         cache_file.parent.mkdir(parents=True, exist_ok=True)

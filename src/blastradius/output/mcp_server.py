@@ -166,7 +166,7 @@ def main():
                     res = {"jsonrpc": "2.0", "id": req_id, "error": error_data}
                 else:
                     compact_txt = serialize_token_efficient(result_data)
-                    from blastradius.diagnostics import tracker
+                    from blastradius.core.diagnostics import tracker
 
                     res = {
                         "jsonrpc": "2.0",

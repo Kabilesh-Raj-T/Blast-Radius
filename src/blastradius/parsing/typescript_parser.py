@@ -19,8 +19,8 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from blastradius.languages.base import LanguageParser
-from blastradius.symbol import Symbol
+from blastradius.core.symbol import Symbol
+from blastradius.parsing.base import LanguageParser
 
 # ---------------------------------------------------------------------------
 # Regex patterns
@@ -128,7 +128,7 @@ _RESERVED = frozenset(
 
 def _module_from_path(filepath: str, repo_path: str) -> str:
     """Return fully-qualified module path."""
-    from blastradius.context import get_repository_context
+    from blastradius.core.context import get_repository_context
 
     ctx = get_repository_context(repo_path)
     return ctx.filepath_to_module(filepath)
@@ -138,7 +138,7 @@ def _resolve_import_path(source: str, current_file: str, repo_path: str) -> str:
     """Resolve a TS import source string to a canonical module name."""
     if source.startswith("."):
         base = Path(current_file).parent / source
-        from blastradius.context import get_repository_context
+        from blastradius.core.context import get_repository_context
 
         ctx = get_repository_context(repo_path)
         return ctx.filepath_to_module(str(base))

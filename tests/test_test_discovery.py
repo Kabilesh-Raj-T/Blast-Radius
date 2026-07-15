@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from blastradius.discovery import DiscoveryConfig, DiscoveryEngine
+from blastradius.analysis.discovery import DiscoveryConfig, DiscoveryEngine
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:

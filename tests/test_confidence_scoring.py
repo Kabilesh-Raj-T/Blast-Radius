@@ -2,9 +2,13 @@
 
 from pathlib import Path
 
-from blastradius.blast import _compute_weighted_confidence, _PathState, compute_blast_radius
-from blastradius.graph import build_graph, build_reverse_graph
-from blastradius.indexer import index_repo
+from blastradius.analysis.blast import (
+    _compute_weighted_confidence,
+    _PathState,
+    compute_blast_radius,
+)
+from blastradius.graph.graph import build_graph, build_reverse_graph
+from blastradius.indexing.indexer import index_repo
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:
@@ -123,8 +127,8 @@ def test_method():
 
 def test_formatter_output_narrative():
     """Verify that formatting outputs include the expected confidence narrative and remain stable."""
-    from blastradius.blast import AffectedTest
-    from blastradius.formatters import format_json, format_markdown
+    from blastradius.analysis.blast import AffectedTest
+    from blastradius.output.formatters import format_json, format_markdown
 
     hit = AffectedTest(
         test_function="test_app.test_foo",

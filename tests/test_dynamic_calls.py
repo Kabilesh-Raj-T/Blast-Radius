@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-from blastradius.blast import compute_blast_radius
-from blastradius.graph import build_graph, build_reverse_graph
-from blastradius.indexer import index_repo
-from blastradius.parser import parse_file
+from blastradius.analysis.blast import compute_blast_radius
+from blastradius.graph.graph import build_graph, build_reverse_graph
+from blastradius.indexing.indexer import index_repo
+from blastradius.parsing import parse_file
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:

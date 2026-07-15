@@ -1,8 +1,8 @@
 """Unit and integration tests for scope-aware symbol resolution."""
 
-from blastradius.graph import build_graph
-from blastradius.parser import parse_file
-from blastradius.resolver import resolve_call_with_certainty
+from blastradius.graph.graph import build_graph
+from blastradius.parsing import parse_file
+from blastradius.resolution.resolver import resolve_call_with_certainty
 
 
 def test_lexical_scope_sibling_resolve():

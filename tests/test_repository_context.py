@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from blastradius.context import RepositoryContext
+from blastradius.core.context import RepositoryContext
 
 
 def _create_file(tmp_path: Path, rel_path: str, content: str) -> Path:

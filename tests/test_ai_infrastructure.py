@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 from blastradius import engine
-from blastradius.mcp_server import main as mcp_main
+from blastradius.output.mcp_server import main as mcp_main
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:

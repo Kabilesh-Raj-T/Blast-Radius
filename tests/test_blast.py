@@ -1,6 +1,6 @@
 import networkx as nx
 import pytest
-from blastradius.blast import _is_test, compute_blast_radius
+from blastradius.analysis.blast import _is_test, compute_blast_radius
 
 
 def test_is_test_classifier():
@@ -87,7 +87,7 @@ def test_compute_blast_radius_stop_at_tests():
 
 @pytest.mark.integration
 def test_blast_radius_simple_repo_integration():
-    from blastradius.graph import build_graph, build_reverse_graph
+    from blastradius.graph.graph import build_graph, build_reverse_graph
 
     # Mock index for simple_repo fixture
     index = {
@@ -179,7 +179,7 @@ def test_blast_radius_simple_repo_integration():
 def test_blast_radius_cycle_repo_integration():
     import time
 
-    from blastradius.graph import build_graph, build_reverse_graph
+    from blastradius.graph.graph import build_graph, build_reverse_graph
 
     # Mock index for cycle_repo fixture
     index = {
@@ -347,7 +347,7 @@ def test_target_not_in_graph():
 
 
 def test_dynamic_call_and_low_confidence():
-    from blastradius.graph import build_graph, build_reverse_graph
+    from blastradius.graph.graph import build_graph, build_reverse_graph
 
     index = {
         "symbols": {

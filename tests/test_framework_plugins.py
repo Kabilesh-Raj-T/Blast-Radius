@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from blastradius import engine
-from blastradius.cli import app
+from blastradius.output.cli import app
 from blastradius.plugins import load_plugin
 from blastradius.plugins.django import DjangoPlugin
 from blastradius.plugins.flask import FlaskPlugin

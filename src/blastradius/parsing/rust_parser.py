@@ -22,8 +22,8 @@ import re
 from pathlib import Path
 from typing import ClassVar
 
-from blastradius.languages.base import LanguageParser
-from blastradius.symbol import Symbol
+from blastradius.core.symbol import Symbol
+from blastradius.parsing.base import LanguageParser
 
 # ---------------------------------------------------------------------------
 # Regex patterns
@@ -66,7 +66,7 @@ _METHOD_RE = re.compile(
 
 def _module_from_path(filepath: str, repo_path: str) -> str:
     """Return fully-qualified module path."""
-    from blastradius.context import get_repository_context
+    from blastradius.core.context import get_repository_context
 
     ctx = get_repository_context(repo_path)
     return ctx.filepath_to_module(filepath)

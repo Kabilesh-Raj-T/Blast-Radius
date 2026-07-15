@@ -1,5 +1,5 @@
 import networkx as nx
-from blastradius.graph import build_graph, build_reverse_graph, load, persist
+from blastradius.graph.graph import build_graph, build_reverse_graph, load, persist
 
 
 def test_build_graph_hierarchy():

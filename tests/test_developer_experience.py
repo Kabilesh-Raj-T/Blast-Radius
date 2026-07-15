@@ -3,8 +3,8 @@
 import json
 
 import pytest
-from blastradius.blast import AffectedTest
-from blastradius.formatters import format_json, format_markdown, format_mcp, format_terminal
+from blastradius.analysis.blast import AffectedTest
+from blastradius.output.formatters import format_json, format_markdown, format_mcp, format_terminal
 
 
 @pytest.fixture

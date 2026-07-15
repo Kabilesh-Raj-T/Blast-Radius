@@ -5,8 +5,8 @@ from pathlib import Path
 
 import networkx as nx
 
-from blastradius.discovery import DiscoveryConfig, DiscoveryEngine
-from blastradius.symbol import SymbolID
+from blastradius.analysis.discovery import DiscoveryConfig, DiscoveryEngine
+from blastradius.core.symbol import SymbolID
 
 
 @dataclass
@@ -242,11 +242,11 @@ def compute_blast_radius(
 ) -> list[AffectedTest]:
     import time
 
-    from blastradius.diagnostics import tracker
+    from blastradius.core.diagnostics import tracker
 
     start_time = time.perf_counter()
 
-    from blastradius.symbol import SymbolID
+    from blastradius.core.symbol import SymbolID
 
     if isinstance(target, str):
         target = SymbolID(target)

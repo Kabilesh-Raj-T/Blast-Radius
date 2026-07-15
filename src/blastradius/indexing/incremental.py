@@ -41,9 +41,9 @@ from typing import Any
 
 import networkx as nx
 
-from blastradius.context import get_repository_context
-from blastradius.languages import registry
-from blastradius.symbol import SymbolID
+from blastradius.core.context import get_repository_context
+from blastradius.core.symbol import SymbolID
+from blastradius.parsing import registry
 
 # ---------------------------------------------------------------------------
 # Public data types
@@ -283,7 +283,7 @@ def _rewire_edges(
 
     Returns a list of ``(src, dst, relation)`` tuples for all edges added.
     """
-    from blastradius.resolver import resolve_call  # local import to avoid circular
+    from blastradius.resolution.resolver import resolve_call  # local import to avoid circular
 
     symbols = index["symbols"]
     imports = index["imports"]
@@ -488,7 +488,7 @@ def invalidate_file(
     index["imports"].pop(rel_filepath, None)
     index.setdefault("modules", {}).pop(rel_filepath, None)
 
-    from blastradius.resolver import invalidate_caches
+    from blastradius.resolution.resolver import invalidate_caches
 
     invalidate_caches()
 
@@ -549,7 +549,7 @@ def patch_file(
     ctx = get_repository_context(str(repo_dir))
     index.setdefault("modules", {})[rel_filepath] = ctx.module_metadata(str(abs_filepath))
 
-    from blastradius.resolver import invalidate_caches
+    from blastradius.resolution.resolver import invalidate_caches
 
     invalidate_caches()
 

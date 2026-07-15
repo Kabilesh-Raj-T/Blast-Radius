@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from blastradius.indexer import index_repo
+from blastradius.indexing.indexer import index_repo
 
 
 def _create_file(base_dir: Path, rel_path: str, content: str) -> Path:

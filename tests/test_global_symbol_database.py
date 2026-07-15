@@ -1,4 +1,4 @@
-from blastradius.symbol import Symbol, SymbolID
+from blastradius.core.symbol import Symbol, SymbolID
 
 
 def test_symbol_id_properties():

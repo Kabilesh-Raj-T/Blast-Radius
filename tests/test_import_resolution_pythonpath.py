@@ -1,6 +1,6 @@
 import os
 
-from blastradius.context import RepositoryContext
+from blastradius.core.context import RepositoryContext
 
 
 def test_pythonpath_layout_detection(tmp_path):

@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-blastradius = "blastradius.cli:app"
+blastradius = "blastradius.output.cli:app"
 
 [project.optional-dependencies]
 dev = [

@@ -1,5 +1,5 @@
 import networkx as nx
-from blastradius.blast import compute_blast_radius
+from blastradius.analysis.blast import compute_blast_radius
 
 
 def test_blast_radius_path_stability_and_order_independence():

@@ -5,14 +5,14 @@ from __future__ import annotations
 import textwrap
 from pathlib import Path
 
-from blastradius.languages import registry
-from blastradius.languages.base import LanguageParser, ParserRegistry
-from blastradius.languages.go_parser import GoParser
-from blastradius.languages.java_parser import JavaParser
-from blastradius.languages.javascript_parser import JavaScriptParser
-from blastradius.languages.python_parser import PythonParser
-from blastradius.languages.rust_parser import RustParser
-from blastradius.languages.typescript_parser import TypeScriptParser
+from blastradius.parsing import registry
+from blastradius.parsing.base import LanguageParser, ParserRegistry
+from blastradius.parsing.go_parser import GoParser
+from blastradius.parsing.java_parser import JavaParser
+from blastradius.parsing.javascript_parser import JavaScriptParser
+from blastradius.parsing.python_parser import PythonParser
+from blastradius.parsing.rust_parser import RustParser
+from blastradius.parsing.typescript_parser import TypeScriptParser
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -97,8 +97,8 @@ class TestParserRegistry:
 
 class TestPythonParserShim:
     def test_backward_compat_import(self):
-        """from blastradius.parser import parse_file must still work."""
-        from blastradius.parser import parse_file  # noqa: F401
+        """from blastradius.parsing import parse_file must work."""
+        from blastradius.parsing import parse_file  # noqa: F401
 
         assert callable(parse_file)
 

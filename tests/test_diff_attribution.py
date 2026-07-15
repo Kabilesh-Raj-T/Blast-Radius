@@ -1,5 +1,5 @@
-from blastradius.diff import get_symbols_for_changed_lines
-from blastradius.languages import registry
+from blastradius.analysis.diff import get_symbols_for_changed_lines
+from blastradius.parsing import registry
 
 
 def test_python_diff_attribution_containment(tmp_path):

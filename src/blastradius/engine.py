@@ -9,10 +9,10 @@ from typing import Any
 
 import networkx as nx
 
-from blastradius.blast import compute_blast_radius
-from blastradius.diff import get_symbols_for_changed_lines, parse_git_diff
-from blastradius.graph import build_graph, build_reverse_graph
-from blastradius.indexer import index_repo
+from blastradius.analysis.blast import compute_blast_radius
+from blastradius.analysis.diff import get_symbols_for_changed_lines, parse_git_diff
+from blastradius.graph.graph import build_graph, build_reverse_graph
+from blastradius.indexing.indexer import index_repo
 from blastradius.plugins import load_plugin
 
 

@@ -20,7 +20,7 @@ class DiscoveryConfig:
 
         # Auto-discover actual test directories from RepositoryContext
         try:
-            from blastradius.context import get_repository_context
+            from blastradius.core.context import get_repository_context
 
             ctx = get_repository_context(root_dir)
             if ctx.test_roots:
