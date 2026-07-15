@@ -149,3 +149,55 @@ def test_mcp_stdio_transport(sample_repo):
     assert "analyze_diff" in tool_names
     assert "explain_test" in tool_names
     assert "health" in tool_names
+
+
+def test_mcp_malformed_syntax_isolation():
+    """Verify that a deep engine crash during tool call is isolated and returns a JSON-RPC error."""
+    from unittest.mock import patch
+
+    mcp_input = '{"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"index_repository","arguments":{"repo":"/some/path"}}}\n'
+
+    old_stdin = sys.stdin
+    old_stdout = sys.stdout
+    sys.stdin = StringIO(mcp_input)
+    sys.stdout = StringIO()
+
+    try:
+        with patch(
+            "blastradius.engine.index_repository", side_effect=ValueError("Simulated engine crash")
+        ):
+            mcp_main()
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdin = old_stdin
+        sys.stdout = old_stdout
+
+    res = json.loads(output)
+    assert res["jsonrpc"] == "2.0"
+    assert res["id"] == 42
+    assert "error" in res
+    assert res["error"]["code"] == -32603
+    assert "Simulated engine crash" in res["error"]["message"]
+
+
+def test_mcp_parse_error_handling():
+    """Verify that a malformed JSON line returns a standard JSON-RPC parse error payload."""
+    mcp_input = '{"jsonrpc": "2.0", "id": 100, "method": "tools/list"\n'
+
+    old_stdin = sys.stdin
+    old_stdout = sys.stdout
+    sys.stdin = StringIO(mcp_input)
+    sys.stdout = StringIO()
+
+    try:
+        mcp_main()
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdin = old_stdin
+        sys.stdout = old_stdout
+
+    res = json.loads(output)
+    assert res["jsonrpc"] == "2.0"
+    assert res["id"] is None
+    assert "error" in res
+    assert res["error"]["code"] == -32700

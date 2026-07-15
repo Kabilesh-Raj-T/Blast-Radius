@@ -17,8 +17,20 @@ def main():
     for line in sys.stdin:
         if not line.strip():
             continue
+        req_id = None
         try:
-            req = json.loads(line)
+            try:
+                req = json.loads(line)
+            except Exception as e:
+                res = {
+                    "jsonrpc": "2.0",
+                    "id": None,
+                    "error": {"code": -32700, "message": f"Parse error: {str(e)}"},
+                }
+                sys.stdout.write(json.dumps(res) + "\n")
+                sys.stdout.flush()
+                continue
+
             req_id = req.get("id")
             method = req.get("method")
 
@@ -166,9 +178,26 @@ def main():
                     }
                 sys.stdout.write(json.dumps(res) + "\n")
                 sys.stdout.flush()
+            else:
+                res = {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32601, "message": f"Method {method} not found."},
+                }
+                sys.stdout.write(json.dumps(res) + "\n")
+                sys.stdout.flush()
 
-        except Exception:
-            pass
+        except Exception as outer_e:
+            try:
+                res = {
+                    "jsonrpc": "2.0",
+                    "id": req_id,
+                    "error": {"code": -32603, "message": f"Internal server error: {str(outer_e)}"},
+                }
+                sys.stdout.write(json.dumps(res) + "\n")
+                sys.stdout.flush()
+            except Exception:
+                pass
 
 
 if __name__ == "__main__":
