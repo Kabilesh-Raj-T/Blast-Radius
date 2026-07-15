@@ -81,8 +81,32 @@ def main():
                                             "type": "string",
                                             "description": "Fully qualified name of changed function/method",
                                         },
+                                        "function": {
+                                            "type": "string",
+                                            "description": "Fully qualified name of changed function/method (alternative to target)",
+                                        },
                                     },
-                                    "required": ["repo", "target"],
+                                },
+                            },
+                            {
+                                "name": "suggest_files_to_update",
+                                "description": "Suggest files that should be reviewed or updated when changing a function/method.",
+                                "inputSchema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "repo": {
+                                            "type": "string",
+                                            "description": "Path to repository root",
+                                        },
+                                        "target": {
+                                            "type": "string",
+                                            "description": "Fully qualified name of changed function/method",
+                                        },
+                                        "function": {
+                                            "type": "string",
+                                            "description": "Fully qualified name of changed function/method (alternative to target)",
+                                        },
+                                    },
                                 },
                             },
                             {
@@ -144,9 +168,29 @@ def main():
                     if tool_name == "index_repository":
                         result_data = engine.index_repository(arguments.get("repo"))
                     elif tool_name == "blast_radius":
-                        result_data = engine.blast_radius(
-                            arguments.get("repo"), arguments.get("target")
+                        import os
+
+                        repo_arg = (
+                            arguments.get("repo") or os.environ.get("BLASTRADIUS_MCP_REPO") or "."
                         )
+                        target_arg = arguments.get("target") or arguments.get("function")
+                        if not target_arg:
+                            raise ValueError(
+                                "Either 'target' or 'function' argument must be provided."
+                            )
+                        result_data = engine.blast_radius(repo_arg, target_arg)
+                    elif tool_name == "suggest_files_to_update":
+                        import os
+
+                        repo_arg = (
+                            arguments.get("repo") or os.environ.get("BLASTRADIUS_MCP_REPO") or "."
+                        )
+                        target_arg = arguments.get("target") or arguments.get("function")
+                        if not target_arg:
+                            raise ValueError(
+                                "Either 'target' or 'function' argument must be provided."
+                            )
+                        result_data = engine.suggest_files_to_update(repo_arg, target_arg)
                     elif tool_name == "analyze_diff":
                         result_data = engine.analyze_diff(
                             arguments.get("repo"), arguments.get("diff")

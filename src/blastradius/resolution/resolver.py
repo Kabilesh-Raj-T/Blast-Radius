@@ -533,6 +533,52 @@ def _get_name_to_symbols(symbols: dict[str, dict]) -> dict[str, list[str]]:
     return index
 
 
+def _is_package_accessible(
+    target_fqn: str,
+    caller_module: str,
+    import_map: dict[str, Any],
+    symbols: dict[str, dict[str, Any]],
+) -> bool:
+    """Determine if target_fqn is in a package that is accessible from caller_module.
+
+    Accessible means either:
+    1. The caller has no imports (typical for mock/unit tests).
+    2. They share the same root package prefix (e.g. both start with 'celery').
+    3. The root package of target_fqn is explicitly imported in import_map.
+    4. Any value in import_map starts with target_fqn's root package name + '.'.
+    """
+    if not import_map:
+        return True
+
+    # Get target module from symbols metadata if available
+    target_module = ""
+    sym_data = symbols.get(target_fqn)
+    if sym_data:
+        target_module = sym_data.get("module", "")
+    if not target_module:
+        target_module = target_fqn
+
+    target_parts = target_module.split(".")
+    if not target_parts:
+        return False
+    target_root = target_parts[0]
+
+    caller_parts = caller_module.split(".")
+    caller_root = caller_parts[0] if caller_parts else ""
+
+    if target_root == caller_root:
+        return True
+
+    if target_root in import_map:
+        return True
+
+    for val in import_map.values():
+        if isinstance(val, str) and (val == target_root or val.startswith(target_root + ".")):
+            return True
+
+    return False
+
+
 def resolve_call_with_certainty(
     call_name: str,
     caller_module: str,
@@ -615,6 +661,32 @@ def _resolve_call_with_certainty_raw(
     import_map = imports.get(filepath, {})
     parts = call_name.split(".")
     prefix = parts[0]
+
+    # ── Celery & Task Queues Heuristics ──
+    # If the call is foo.delay or foo.apply_async, and foo is a task
+    if len(parts) > 1 and parts[-1] in ("delay", "apply_async", "apply", "signature", "s", "si"):
+        base_name = ".".join(parts[:-1])
+        base_matches, base_cert = resolve_call_with_certainty(
+            base_name,
+            caller_module,
+            caller_class,
+            filepath,
+            imports,
+            symbols,
+            local_types,
+            caller_id=caller_id,
+            _visited=_visited,
+        )
+        if base_matches:
+            resolved_tasks = []
+            for m in base_matches:
+                sym_data = symbols.get(m, {})
+                decorators = sym_data.get("decorators", [])
+                if decorators and any("task" in d.lower() for d in decorators):
+                    resolved_tasks.append(m)
+            if resolved_tasks:
+                return resolved_tasks, 0.95
+            return base_matches, 0.90
 
     # ── 0. Scope-chain resolution for bare names ──────────────────────
     # This MUST run before the import-map check so that a local ``def``
@@ -714,13 +786,19 @@ def _resolve_call_with_certainty_raw(
     if len(parts) == 1 and isinstance(star_excludes, list) and bare_name in star_excludes:
         return [], 1.0
     # Use pre-built index — O(1) instead of O(n) full scan.
+    name_index = _get_name_to_symbols(symbols)
+    raw_matches = name_index.get(bare_name, [])
+
+    # Filter matches using package accessibility
+    filtered_matches = [
+        m for m in raw_matches if _is_package_accessible(m, caller_module, import_map, symbols)
+    ]
+
     # Cap at 8 matches: names with 9+ matches are so common (e.g. __init__,
     # get, run, update) that any edge added would likely be a false positive.
-    name_index = _get_name_to_symbols(symbols)
-    matches = name_index.get(bare_name, [])
-    if len(matches) > 8:
+    if len(filtered_matches) > 8:
         return [], 0.60
-    return matches, 0.60
+    return filtered_matches, 0.60
 
 
 def resolve_call(

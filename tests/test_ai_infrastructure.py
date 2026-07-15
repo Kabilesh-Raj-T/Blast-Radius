@@ -201,3 +201,100 @@ def test_mcp_parse_error_handling():
     assert res["id"] is None
     assert "error" in res
     assert res["error"]["code"] == -32700
+
+
+def test_engine_suggest_files_to_update(sample_repo):
+    """Verify suggest_files_to_update returns the expected schema and files."""
+    res = engine.suggest_files_to_update(str(sample_repo), "calc.Calculator.add")
+    assert "function" in res
+    assert res["function"] == "calc.Calculator.add"
+    assert "files_to_review" in res
+
+    files = res["files_to_review"]
+    assert len(files) == 1
+    assert files[0]["path"] == "test_calc.py"
+    assert files[0]["relationship"] == "transitive_test"
+    assert "tests add directly" in files[0]["reason"]
+
+
+def test_mcp_suggest_files_to_update_tool(sample_repo):
+    """Verify that calling suggest_files_to_update via MCP works."""
+    mcp_input = (
+        '{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"suggest_files_to_update","arguments":{"repo":"'
+        + str(sample_repo).replace("\\", "\\\\")
+        + '","target":"calc.Calculator.add"}}}\n'
+    )
+
+    old_stdin = sys.stdin
+    old_stdout = sys.stdout
+    sys.stdin = StringIO(mcp_input)
+    sys.stdout = StringIO()
+
+    try:
+        mcp_main()
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdin = old_stdin
+        sys.stdout = old_stdout
+
+    res = json.loads(output)
+    assert res["jsonrpc"] == "2.0"
+    assert res["id"] == 10
+    assert "error" not in res
+
+    # Parse compact text payload
+    content_text = res["result"]["content"][0]["text"]
+    tool_res = json.loads(content_text)
+    assert "function" in tool_res
+    assert tool_res["function"] == "calc.Calculator.add"
+    assert len(tool_res["files_to_review"]) == 1
+    assert tool_res["files_to_review"][0]["path"] == "test_calc.py"
+
+
+def test_mcp_parameter_aliases(sample_repo):
+    """Verify MCP tools accept both 'target' and 'function' arguments, and error if neither is provided."""
+    # Test 'function' parameter for blast_radius
+    mcp_input = (
+        '{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"blast_radius","arguments":{"repo":"'
+        + str(sample_repo).replace("\\", "\\\\")
+        + '","function":"calc.Calculator.add"}}}\n'
+    )
+
+    old_stdin = sys.stdin
+    old_stdout = sys.stdout
+    sys.stdin = StringIO(mcp_input)
+    sys.stdout = StringIO()
+
+    try:
+        mcp_main()
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdin = old_stdin
+        sys.stdout = old_stdout
+
+    res = json.loads(output)
+    assert "error" not in res
+    content_text = res["result"]["content"][0]["text"]
+    tool_res = json.loads(content_text)
+    assert len(tool_res) == 1
+
+    # Test error when neither 'target' nor 'function' is provided
+    mcp_input_error = (
+        '{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"blast_radius","arguments":{"repo":"'
+        + str(sample_repo).replace("\\", "\\\\")
+        + '"}}}\n'
+    )
+
+    sys.stdin = StringIO(mcp_input_error)
+    sys.stdout = StringIO()
+
+    try:
+        mcp_main()
+        output = sys.stdout.getvalue()
+    finally:
+        sys.stdin = old_stdin
+        sys.stdout = old_stdout
+
+    res = json.loads(output)
+    assert "error" in res
+    assert "Either 'target' or 'function'" in res["error"]["message"]

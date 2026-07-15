@@ -439,45 +439,49 @@ Add to `.cursor/mcp.json` in your project root:
 
 ### Available MCP tools
 
+> [!TIP]
+> The MCP server outputs use a **token-efficient representation** (with compact keys) to minimize LLM context window costs and round-trip sizes.
+
 #### `blast_radius`
 
-Returns the full blast radius of a function.
+Returns the full blast radius of a function. Accepts either `target` or `function` parameter.
 
 **Input:**
 ```json
 {
-  "function": "utils/parser.py:parse_date"
+  "repo": ".",
+  "target": "utils/parser.py:parse_date"
 }
 ```
+*Note: You can also use `"function": "utils/parser.py:parse_date"`.*
 
-**Output:**
+**Output (Token-Efficient Format):**
 ```json
-{
-  "function": "utils/parser.py:parse_date",
-  "total_tests": 47,
-  "total_files": 12,
-  "results": [
-    {
-      "test_function": "test_billing.py:test_generate_invoice",
-      "test_file": "test_billing.py",
-      "chain": ["parse_date", "generate_invoice", "test_generate_invoice"],
-      "depth": 2,
-      "confidence": "MEDIUM"
-    }
-  ]
-}
+[
+  {
+    "func": "test_billing.test_generate_invoice",
+    "file": "test_billing.py",
+    "reason": "direct invocation",
+    "conf": "HIGH",
+    "score": 1.0,
+    "chain": ["parse_date()", "test_generate_invoice()"],
+    "exp": "Direct invocation from the test node (factors: direct invocation)."
+  }
+]
 ```
 
 #### `suggest_files_to_update`
 
-Returns the list of files an AI agent should read and potentially update when changing a function. This is the tool to call before editing — it tells the agent exactly which files belong in its context window.
+Returns the list of files an AI agent should read and potentially update when changing a function. This is the tool to call before editing — it tells the agent exactly which files belong in its context window. Accepts either `target` or `function` parameter.
 
 **Input:**
 ```json
 {
-  "function": "utils/parser.py:parse_date"
+  "repo": ".",
+  "target": "utils/parser.py:parse_date"
 }
 ```
+*Note: You can also use `"function": "utils/parser.py:parse_date"`.*
 
 **Output:**
 ```json

@@ -1,0 +1,8 @@
+- id: blastradius
+  name: BlastRadius
+  description: "Assess test impact and blast radius of modified symbols before committing."
+  entry: blastradius diff
+  args: [--staged]
+  language: python
+  types: [python]
+  files: \.(py|js|ts|rs|go|java)$
