@@ -167,25 +167,49 @@ def add_edges_for_symbols(
             local_types = sym_dict.get("local_types")
             for call_target in sym_dict.get("calls", []):
                 if call_target.startswith("dynamic:"):
-                    parts = call_target.split(":")
-                    if len(parts) == 4:
-                        _, dyn_type, line, col = parts
-                        dyn_node_id = SymbolID(f"{sym_id}:dyn:{dyn_type}:{line}:{col}")
-                        G.add_node(
-                            dyn_node_id,
-                            kind="dynamic_call",
-                            type=dyn_type,
-                            line_no=int(line),
-                            col_offset=int(col),
-                            filepath=filepath,
-                        )
-                        # Caller -> DynamicCall
-                        G.add_edge(sym_sid, dyn_node_id, relation="CALLS", certainty=0.30)
-                        # DynamicCall -> potential function/method targets in this module.
-                        # Use pre-built index — O(k) where k = functions in module, not O(n)
-                        for other_id in module_functions.get(module, []):
+                    try:
+                        parts = call_target.split(":")
+                        if len(parts) == 4:
+                            _, dyn_type, line, col = parts
+                            dyn_node_id = SymbolID(f"{sym_id}:dyn:{dyn_type}:{line}:{col}")
+                            G.add_node(
+                                dyn_node_id,
+                                kind="dynamic_call",
+                                type=dyn_type,
+                                line_no=int(line),
+                                col_offset=int(col),
+                                filepath=filepath,
+                            )
+                            # Caller -> DynamicCall
+                            G.add_edge(sym_sid, dyn_node_id, relation="CALLS", certainty=0.30)
+                            # DynamicCall -> potential function/method targets in this module.
+                            targets = sorted(module_functions.get(module, []))
+                            for other_id in targets:
+                                G.add_edge(
+                                    dyn_node_id,
+                                    SymbolID(other_id),
+                                    relation="CALLS",
+                                    certainty=0.30,
+                                )
+                        else:
+                            raise ValueError("Invalid dynamic tag structure")
+                    except (ValueError, KeyError, IndexError):
+                        # Fallback: create a generic low-confidence broad-impact edge/node
+                        fallback_node = SymbolID(f"{sym_id}:dyn:fallback")
+                        if fallback_node not in G:
+                            G.add_node(
+                                fallback_node,
+                                kind="dynamic_call",
+                                type="fallback",
+                                line_no=sym_dict.get("line_no", 1),
+                                col_offset=0,
+                                filepath=filepath,
+                            )
+                        G.add_edge(sym_sid, fallback_node, relation="CALLS", certainty=0.10)
+                        targets = sorted(module_functions.get(module, []))
+                        for other_id in targets:
                             G.add_edge(
-                                dyn_node_id, SymbolID(other_id), relation="CALLS", certainty=0.30
+                                fallback_node, SymbolID(other_id), relation="CALLS", certainty=0.10
                             )
                 else:
                     resolved, certainty = resolve_call_with_certainty(

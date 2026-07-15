@@ -400,6 +400,8 @@ def resolve(name: str, index: Any) -> list[str]:
                 fn_name = key.rsplit(":", 1)[1]
                 bare_name = fn_name.rsplit(".", 1)[-1]
                 lookup.setdefault(bare_name, []).append(key)
+        for k in lookup:
+            lookup[k].sort()
         _cache[index_id] = lookup
 
     return _cache[index_id].get(name, [])
@@ -525,6 +527,8 @@ def _get_name_to_symbols(symbols: dict[str, dict]) -> dict[str, list[str]]:
         if sym_dict.get("kind") == "class":
             bare = sym_id.split(".")[-1]
             index.setdefault(bare, []).append(sym_id)
+    for k in index:
+        index[k].sort()
     _name_to_symbols_cache[key] = index
     return index
 
@@ -572,6 +576,7 @@ def resolve_call_with_certainty(
     resolved_matches = []
     for m in matches:
         resolved_matches.append(resolve_fqn_transitively_cached(m, symbols, imports, set()))
+    resolved_matches = sorted(list(set(resolved_matches)))
     res = (resolved_matches, certainty)
     _resolve_call_cache[cache_key] = res
     _visited.remove(cycle_key)

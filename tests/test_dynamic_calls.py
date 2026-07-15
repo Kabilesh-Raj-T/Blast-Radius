@@ -110,3 +110,34 @@ def test_flow():
     assert "dynamic dispatch" in hit.explanation
     assert "dynamic dispatch" in hit.reason
     assert "getattr, eval, partial, exec, or runtime dispatch" in hit.resolution_explanation
+
+
+def test_malformed_dynamic_call_fallback():
+    """Verify that a malformed dynamic call target is handled gracefully and falls back to a low-confidence edge."""
+    index = {
+        "symbols": {
+            "module.func": {
+                "unique_id": "module.func",
+                "module": "module",
+                "filepath": "module.py",
+                "kind": "function",
+                "line_no": 10,
+                "calls": ["dynamic:getattr:malformed"],  # Only 3 parts instead of 4
+            },
+            "module.target": {
+                "unique_id": "module.target",
+                "module": "module",
+                "filepath": "module.py",
+                "kind": "function",
+                "line_no": 20,
+                "calls": [],
+            },
+        },
+        "imports": {},
+    }
+    G = build_graph(index)
+    assert G.has_node("module.func:dyn:fallback")
+    assert G.has_edge("module.func", "module.func:dyn:fallback")
+    assert G.has_edge("module.func:dyn:fallback", "module.target")
+    edge_data = G["module.func"]["module.func:dyn:fallback"][0]
+    assert edge_data.get("certainty") == 0.10
