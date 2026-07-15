@@ -155,7 +155,7 @@ def outer():
     inner_sym = next(s for s in result if s.function_name == "inner")
 
     assert outer_sym.unique_id == "temp_source.outer"
-    assert outer_sym.nested_info is None
+    assert outer_sym.nested_info == {"scope_info": {"local_defs": ["inner"]}}
 
     assert inner_sym.unique_id == "temp_source.outer.inner"
     assert inner_sym.nested_info == {"parent_function": "outer", "parent_id": "temp_source.outer"}

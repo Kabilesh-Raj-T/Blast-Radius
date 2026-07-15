@@ -118,7 +118,7 @@ def test_index_repo_incremental_cache(tmp_path):
     assert "b.func_b" in index1["symbols"]
 
     # Second run: parse_file should not be called
-    with patch("blastradius.indexer.parse_file") as mock_parse:
+    with patch("blastradius.languages.registry.parse_file") as mock_parse:
         index2 = index_repo(str(repo))
         assert index2 == index1
         mock_parse.assert_not_called()
@@ -132,7 +132,9 @@ def test_index_repo_incremental_cache(tmp_path):
     os.utime(str(file_a), (os_mtime, os_mtime))
 
     new_sym = make_symbol("a.func_a_new", "a", "a.py", "func_a_new")
-    with patch("blastradius.indexer.parse_file", return_value=([new_sym], {})) as mock_parse:
+    with patch(
+        "blastradius.languages.registry.parse_file", return_value=([new_sym], {})
+    ) as mock_parse:
         index3 = index_repo(str(repo))
         assert "a.func_a_new" in index3["symbols"]
         assert "b.func_b" in index3["symbols"]  # kept from cache
@@ -181,7 +183,7 @@ def test_simple_repo_integration(tmp_path):
     cache_file = dest_dir / ".blastradius" / "mtime_cache.json"
     assert cache_file.exists()
 
-    with patch("blastradius.indexer.parse_file") as mock_parse:
+    with patch("blastradius.languages.registry.parse_file") as mock_parse:
         index_re1 = index_repo(str(dest_dir))
         assert index_re1 == index
         mock_parse.assert_not_called()
@@ -202,7 +204,9 @@ def test_simple_repo_integration(tmp_path):
         "utils/parser.py",
         "parse_date_modified",
     )
-    with patch("blastradius.indexer.parse_file", return_value=([mod_sym], {})) as mock_parse:
+    with patch(
+        "blastradius.languages.registry.parse_file", return_value=([mod_sym], {})
+    ) as mock_parse:
         index_re2 = index_repo(str(dest_dir))
         mock_parse.assert_called_once_with(str(parser_py), str(dest_dir.resolve()))
         assert "utils.parser.parse_date_modified" in index_re2["symbols"]

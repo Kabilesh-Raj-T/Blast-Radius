@@ -33,3 +33,10 @@ dev = [
 markers = [
     "integration: marks tests as integration tests",
 ]
+
+[tool.mypy]
+ignore_missing_imports = true
+exclude = [
+    '^benchmarks/',
+    '^scratch_',
+]

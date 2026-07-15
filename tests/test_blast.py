@@ -36,7 +36,8 @@ def test_compute_blast_radius_simple():
     results = compute_blast_radius(rev, "target")
     assert len(results) == 1
     assert results[0].test_function == "test_func"
-    assert results[0].confidence == "MEDIUM"  # depth 2
+    assert results[0].confidence == "HIGH"  # depth 2 → score 0.90 → HIGH
+    assert results[0].score >= 0.85
     assert results[0].depth == 2
     assert results[0].chain == ["target", "helper", "test_func"]
 
@@ -55,7 +56,7 @@ def test_compute_blast_radius_cycle():
     assert len(results) == 1
     assert results[0].test_function == "test_func"
     assert results[0].depth == 3
-    assert results[0].confidence == "LOW"
+    assert results[0].confidence == "MEDIUM"  # depth 3 → score 0.81 → MEDIUM
 
 
 def test_compute_blast_radius_max_depth():
@@ -170,7 +171,8 @@ def test_blast_radius_simple_repo_integration():
         "tests.test_billing.test_generate_invoice",
     ]
     assert tgt_test.depth == 2
-    assert tgt_test.confidence == "MEDIUM"
+    assert tgt_test.confidence == "HIGH"  # depth 2, import-resolved → score ≥ 0.85
+    assert tgt_test.score >= 0.85
 
 
 @pytest.mark.integration
@@ -270,7 +272,8 @@ def test_confidence_medium():
     rev.add_edge("a", "test_func")
     results = compute_blast_radius(rev, "target")
     assert len(results) == 1
-    assert results[0].confidence == "MEDIUM"
+    assert results[0].confidence == "HIGH"  # depth 2 → score 0.90 → HIGH
+    assert results[0].score >= 0.85
     assert results[0].depth == 2
     assert len(results[0].chain) == 3
 
@@ -283,7 +286,8 @@ def test_confidence_low():
     rev.add_edge("b", "test_func")
     results = compute_blast_radius(rev, "target")
     assert len(results) == 1
-    assert results[0].confidence == "LOW"
+    assert results[0].confidence == "MEDIUM"  # depth 3 → score 0.81 → MEDIUM
+    assert results[0].score >= 0.55
     assert results[0].depth == 3
     assert len(results[0].chain) == 4
 
@@ -368,7 +372,7 @@ def test_dynamic_call_and_low_confidence():
             "m.test_func": {
                 "unique_id": "m.test_func",
                 "module": "m",
-                "filepath": "m.py",
+                "filepath": "test_m.py",
                 "class_name": None,
                 "function_name": "test_func",
                 "decorators": [],
