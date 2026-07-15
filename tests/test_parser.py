@@ -257,3 +257,21 @@ class Worker:
 
     # Decorator call `@decorator(arg)` should be captured in calls
     assert "decorator" in (method.calls or [])
+
+
+def test_extract_local_types_extended(tmp_path):
+    code = """
+class Worker:
+    def do_work(self):
+        session = requests.Session()
+        with requests.Session() as s:
+            s.get()
+"""
+    result = _write_and_parse(tmp_path, code)
+    method = next(s for s in result if s.kind == "method")
+    assert method.local_types == {
+        "self": "Worker",
+        "cls": "Worker",
+        "session": "requests.Session",
+        "s": "requests.Session",
+    }

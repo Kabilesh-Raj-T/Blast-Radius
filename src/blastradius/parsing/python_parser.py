@@ -287,14 +287,23 @@ def extract_local_types(
             self.generic_visit(assign_node)
 
         def visit_Assign(self, assign_node: ast.Assign) -> None:
-            if isinstance(assign_node.value, ast.Call) and isinstance(
-                assign_node.value.func, ast.Name
-            ):
-                class_type = assign_node.value.func.id
-                for target in assign_node.targets:
-                    if isinstance(target, ast.Name):
-                        local_types[target.id] = class_type
+            if isinstance(assign_node.value, ast.Call):
+                class_type = get_call_name(assign_node.value.func)
+                if class_type:
+                    for target in assign_node.targets:
+                        if isinstance(target, ast.Name):
+                            local_types[target.id] = class_type
             self.generic_visit(assign_node)
+
+        def visit_With(self, with_node: ast.With) -> None:
+            for item in with_node.items:
+                if isinstance(item.context_expr, ast.Call) and isinstance(
+                    item.optional_vars, ast.Name
+                ):
+                    class_type = get_call_name(item.context_expr.func)
+                    if class_type:
+                        local_types[item.optional_vars.id] = class_type
+            self.generic_visit(with_node)
 
         def visit_FunctionDef(self, nested_node: ast.FunctionDef) -> None:
             pass
