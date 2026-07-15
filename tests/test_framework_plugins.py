@@ -109,6 +109,7 @@ def test_cli_integration_with_plugins(mock_repo):
     result = runner.invoke(
         app,
         [
+            "analyze",
             "app.calc",
             "-r",
             str(mock_repo),

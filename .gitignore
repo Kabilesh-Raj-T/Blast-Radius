@@ -130,3 +130,5 @@ cython_debug/
 /scratch_simple_repo/
 /scratch_test/
 /scratch_test_conf/
+/.blastradius/
+.blastradius/
